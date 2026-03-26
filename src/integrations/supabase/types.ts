@@ -14,7 +14,147 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      athlete_profiles: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string
+          date_of_birth: string | null
+          display_name: string | null
+          gym_access: boolean | null
+          height_cm: number | null
+          home_trainer: boolean | null
+          id: string
+          notes: string | null
+          onboarding_completed: boolean | null
+          pool_access: boolean | null
+          sex: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+          weight_kg: number | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          display_name?: string | null
+          gym_access?: boolean | null
+          height_cm?: number | null
+          home_trainer?: boolean | null
+          id?: string
+          notes?: string | null
+          onboarding_completed?: boolean | null
+          pool_access?: boolean | null
+          sex?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+          weight_kg?: number | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          display_name?: string | null
+          gym_access?: boolean | null
+          height_cm?: number | null
+          home_trainer?: boolean | null
+          id?: string
+          notes?: string | null
+          onboarding_completed?: boolean | null
+          pool_access?: boolean | null
+          sex?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
+      default_availability_rules: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          id: string
+          is_available: boolean | null
+          max_duration_minutes: number | null
+          note: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          id?: string
+          is_available?: boolean | null
+          max_duration_minutes?: number | null
+          note?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          is_available?: boolean | null
+          max_duration_minutes?: number | null
+          note?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      race_goals: {
+        Row: {
+          created_at: string
+          event_name: string | null
+          format: string | null
+          goal_type: string
+          id: string
+          is_competition: boolean | null
+          location: string | null
+          primary_objective: string | null
+          secondary_objective: string | null
+          target_date: string | null
+          target_time: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_name?: string | null
+          format?: string | null
+          goal_type: string
+          id?: string
+          is_competition?: boolean | null
+          location?: string | null
+          primary_objective?: string | null
+          secondary_objective?: string | null
+          target_date?: string | null
+          target_time?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_name?: string | null
+          format?: string | null
+          goal_type?: string
+          id?: string
+          is_competition?: boolean | null
+          location?: string | null
+          primary_objective?: string | null
+          secondary_objective?: string | null
+          target_date?: string | null
+          target_time?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
