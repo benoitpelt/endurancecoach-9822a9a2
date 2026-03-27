@@ -35,6 +35,8 @@ const App = () => (
             <Route path="/onboarding/goal" element={<ProtectedRoute><GoalPage /></ProtectedRoute>} />
             <Route path="/onboarding/availability" element={<ProtectedRoute><AvailabilityPage /></ProtectedRoute>} />
             <Route path="/summary" element={<ProtectedRoute><SummaryPage /></ProtectedRoute>} />
+            <Route path="/onboarding/enriched" element={<ProtectedRoute><EnrichedOnboardingPage /></ProtectedRoute>} />
+            <Route path="/onboarding/enriched/summary" element={<ProtectedRoute><EnrichedSummaryPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
