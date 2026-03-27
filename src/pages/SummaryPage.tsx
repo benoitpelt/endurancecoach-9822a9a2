@@ -114,11 +114,14 @@ export default function SummaryPage() {
           )}
         </Section>
 
-        <div className="bg-gradient-subtle rounded-xl p-6 text-center space-y-2">
+        <div className="bg-gradient-subtle rounded-xl p-6 text-center space-y-3">
           <p className="font-heading font-semibold">Prochaine étape</p>
           <p className="text-sm text-muted-foreground">
-            L'affinage de votre profil et la génération de votre plan d'entraînement personnalisé arriveront bientôt.
+            Affine ton profil pour obtenir un plan d'entraînement encore plus pertinent et personnalisé.
           </p>
+          <Button onClick={() => navigate("/onboarding/enriched")} className="mt-2">
+            Affiner mon profil
+          </Button>
         </div>
       </div>
     </div>

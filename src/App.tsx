@@ -13,6 +13,8 @@ import ProfilePage from "@/pages/ProfilePage";
 import GoalPage from "@/pages/GoalPage";
 import AvailabilityPage from "@/pages/AvailabilityPage";
 import SummaryPage from "@/pages/SummaryPage";
+import EnrichedOnboardingPage from "@/pages/EnrichedOnboardingPage";
+import EnrichedSummaryPage from "@/pages/EnrichedSummaryPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +35,8 @@ const App = () => (
             <Route path="/onboarding/goal" element={<ProtectedRoute><GoalPage /></ProtectedRoute>} />
             <Route path="/onboarding/availability" element={<ProtectedRoute><AvailabilityPage /></ProtectedRoute>} />
             <Route path="/summary" element={<ProtectedRoute><SummaryPage /></ProtectedRoute>} />
+            <Route path="/onboarding/enriched" element={<ProtectedRoute><EnrichedOnboardingPage /></ProtectedRoute>} />
+            <Route path="/onboarding/enriched/summary" element={<ProtectedRoute><EnrichedSummaryPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
