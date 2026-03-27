@@ -80,6 +80,7 @@ Deno.serve(async (req) => {
 
     const prompt = buildPrompt({
       today, targetDate, weeksUntilRace, goal, profile, enriched, metrics, availDays,
+      isPartialFirstWeek, firstSundayStr, firstMondayAfterStr,
     });
 
     // Call Lovable AI
