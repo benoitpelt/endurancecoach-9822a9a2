@@ -102,7 +102,8 @@ export default function EnrichedOnboardingPage() {
           typical_sessions: enriched.typical_sessions || "",
         });
 
-        setPerformances((enriched.performances as PerformancesData) || emptyPerformances);
+        const perf = enriched.performances as unknown as PerformancesData | null;
+        setPerformances(perf && typeof perf === "object" ? { ...emptyPerformances, ...perf } : emptyPerformances);
 
         setConstraints({
           injuries_constraints: enriched.injuries_constraints || "",
