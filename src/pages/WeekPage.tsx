@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, ChevronRight } from "lucide-react";
+import { Loader2, ArrowLeft, ChevronRight, Apple } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -15,21 +15,12 @@ const WEEK_TYPE_LABELS: Record<string, string> = {
 };
 
 const SPORT_LABELS: Record<string, string> = {
-  swim: "Natation",
-  bike: "Vélo",
-  run: "Course à pied",
-  strength: "Renforcement",
-  mobility: "Mobilité",
-  rest: "Repos",
+  swim: "Natation", bike: "Vélo", run: "Course à pied",
+  strength: "Renforcement", mobility: "Mobilité", rest: "Repos",
 };
 
 const SPORT_EMOJI: Record<string, string> = {
-  swim: "🏊",
-  bike: "🚴",
-  run: "🏃",
-  strength: "💪",
-  mobility: "🧘",
-  rest: "😴",
+  swim: "🏊", bike: "🚴", run: "🏃", strength: "💪", mobility: "🧘", rest: "😴",
 };
 
 const PRIORITY_STYLES: Record<string, { label: string; classes: string }> = {
@@ -48,6 +39,8 @@ type Workout = {
   duration_target_minutes: number | null;
   distance_target_km: number | null;
   intensity_zone_label: string | null;
+  carb_strategy_type: string | null;
+  gut_training_priority: string | null;
 };
 
 export default function WeekPage() {
@@ -104,6 +97,9 @@ export default function WeekPage() {
     try { return format(new Date(d), "EEEE d MMM", { locale: fr }); } catch { return d; }
   };
 
+  const hasNutrition = (wo: Workout) =>
+    wo.carb_strategy_type && wo.carb_strategy_type !== "none";
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -158,6 +154,7 @@ export default function WeekPage() {
           <div className="space-y-3">
             {workouts.map((wo) => {
               const pr = PRIORITY_STYLES[wo.workout_priority] || PRIORITY_STYLES.important;
+              const showNutrition = hasNutrition(wo);
               return (
                 <button
                   key={wo.id}
@@ -175,6 +172,12 @@ export default function WeekPage() {
                           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${pr.classes}`}>
                             {pr.label}
                           </span>
+                          {showNutrition && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 flex items-center gap-1">
+                              <Apple className="h-2.5 w-2.5" />
+                              Nutri
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground truncate">
                           {formatDate(wo.scheduled_date)}

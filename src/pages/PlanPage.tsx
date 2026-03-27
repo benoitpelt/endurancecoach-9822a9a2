@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Calendar, Target, ChevronRight, Layers, Sparkles } from "lucide-react";
-import { format, addDays, addWeeks } from "date-fns";
+import { Loader2, ArrowLeft, Calendar, Target, ChevronRight, Layers, Sparkles, AlertTriangle, Info } from "lucide-react";
+import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 
@@ -86,18 +86,30 @@ export default function PlanPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [goal, setGoal] = useState<any>(null);
+  const [generationNotes, setGenerationNotes] = useState<string | null>(null);
+  const [profileComplete, setProfileComplete] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     loadPlan();
+    checkProfileCompleteness();
   }, [user]);
+
+  const checkProfileCompleteness = async () => {
+    const [{ data: prof }, { data: goalData }, { data: enriched }] = await Promise.all([
+      supabase.from("athlete_profiles").select("onboarding_completed").eq("user_id", user!.id).maybeSingle(),
+      supabase.from("race_goals").select("id").eq("user_id", user!.id).limit(1).maybeSingle(),
+      supabase.from("athlete_enriched_profiles").select("enriched_onboarding_completed").eq("user_id", user!.id).maybeSingle(),
+    ]);
+    setProfileComplete(!!(prof?.onboarding_completed && goalData));
+  };
 
   const loadPlan = async () => {
     try {
@@ -108,7 +120,7 @@ export default function PlanPage() {
         .from("training_plans")
         .select("*")
         .eq("user_id", user!.id)
-        .order("status", { ascending: true })
+        .in("status", ["active", "draft"])
         .order("created_at", { ascending: false })
         .limit(1);
 
@@ -169,135 +181,44 @@ export default function PlanPage() {
     }
   };
 
-  const seedDemoPlan = async () => {
+  const generatePlan = async () => {
     if (!user) return;
     try {
-      setSeeding(true);
+      setGenerating(true);
+      setError(null);
+      setGenerationNotes(null);
 
-      // Get user's first goal if any
-      const { data: goals } = await supabase
-        .from("race_goals")
-        .select("id, event_name, format, goal_type")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) throw new Error("Session expirée.");
 
-      const goalId = goals?.[0]?.id || null;
-      const goalName = goals?.[0]?.event_name || goals?.[0]?.format || "Objectif";
+      const res = await supabase.functions.invoke("generate-training-plan", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      const today = new Date();
-      const planStart = today;
-      const planEnd = addWeeks(today, 8);
-
-      // Create plan
-      const { data: newPlan, error: pErr } = await supabase
-        .from("training_plans")
-        .insert({
-          user_id: user.id,
-          name: goalName ? `Plan — ${goalName}` : "Plan d'entraînement",
-          status: "draft",
-          goal_id: goalId,
-          start_date: format(planStart, "yyyy-MM-dd"),
-          end_date: format(planEnd, "yyyy-MM-dd"),
-          notes: "Plan squelette généré pour prévisualiser la structure. Ce plan sera remplacé par la génération intelligente.",
-        })
-        .select()
-        .single();
-
-      if (pErr) throw pErr;
-
-      const blockDefs = [
-        { name: "Bloc 1 — Base aérobie", focus: "Développement de l'endurance fondamentale", weeks: 4, weekTypes: ["normal", "normal", "normal", "recovery"] as string[] },
-        { name: "Bloc 2 — Développement spécifique", focus: "Travail au seuil et intensité", weeks: 4, weekTypes: ["normal", "normal", "taper", "race_week"] as string[] },
-      ];
-
-      let weekNum = 1;
-      for (let bi = 0; bi < blockDefs.length; bi++) {
-        const bd = blockDefs[bi];
-        const blockStart = addWeeks(planStart, bi === 0 ? 0 : blockDefs.slice(0, bi).reduce((s, b) => s + b.weeks, 0));
-        const blockEnd = addDays(addWeeks(blockStart, bd.weeks), -1);
-
-        const { data: newBlock, error: bErr } = await supabase
-          .from("training_blocks")
-          .insert({
-            plan_id: newPlan.id,
-            user_id: user.id,
-            name: bd.name,
-            block_order: bi,
-            focus: bd.focus,
-            start_date: format(blockStart, "yyyy-MM-dd"),
-            end_date: format(blockEnd, "yyyy-MM-dd"),
-          })
-          .select()
-          .single();
-
-        if (bErr) throw bErr;
-
-        for (let wi = 0; wi < bd.weeks; wi++) {
-          const wStart = addWeeks(blockStart, wi);
-          const wEnd = addDays(wStart, 6);
-
-          const { data: newWeek, error: wErr } = await supabase
-            .from("training_weeks")
-            .insert({
-              block_id: newBlock.id,
-              user_id: user.id,
-              week_number: weekNum,
-              week_type: bd.weekTypes[wi],
-              start_date: format(wStart, "yyyy-MM-dd"),
-              end_date: format(wEnd, "yyyy-MM-dd"),
-              notes: bd.weekTypes[wi] === "recovery" ? "Semaine allégée pour assimiler la charge." : null,
-            })
-            .select()
-            .single();
-
-          if (wErr) throw wErr;
-
-          // Seed workouts for this week
-          const isRecovery = bd.weekTypes[wi] === "recovery";
-          const workoutDefs = isRecovery
-            ? [
-                { sport: "swim", day: 1, dur: 30, priority: "optional", goal: "Technique & récupération active", intensity: "Zone 1", structure: "Échauffement 200m\nÉducatifs 4x50m\nSouple 400m\nRetour au calme 100m" },
-                { sport: "bike", day: 3, dur: 45, priority: "important", goal: "Récupération active vélo", intensity: "Zone 1-2", structure: "45 min vélo souple\nMoulinage léger" },
-                { sport: "run", day: 5, dur: 30, priority: "optional", goal: "Footing léger", intensity: "Zone 1", structure: "30 min footing très souple" },
-              ]
-            : [
-                { sport: "swim", day: 1, dur: 50, priority: "key", goal: "Travail technique et endurance", intensity: "Zone 2-3", structure: "Échauffement 300m\n6x100m allure seuil (r=20s)\n200m souple\n4x50m sprints\nRetour au calme 200m", note: "Concentre-toi sur ta prise d'eau et ton roulis." },
-                { sport: "run", day: 2, dur: 50, priority: "important", goal: "Endurance fondamentale", intensity: "Zone 2", structure: "10 min échauffement\n30 min allure EF\n10 min retour au calme" },
-                { sport: "bike", day: 3, dur: 75, priority: "key", goal: "Sortie longue vélo", intensity: "Zone 2-3", structure: "15 min échauffement\n45 min en endurance\n2x5 min au seuil\n10 min retour au calme", note: "Profite de la sortie pour tester ton ravitaillement." },
-                { sport: "strength", day: 4, dur: 35, priority: "optional", goal: "Renforcement musculaire", intensity: "Modérée", structure: "Gainage 3x45s\nSquats 3x12\nFentes 3x10/jambe\nPompes 3x12\nÉtirements" },
-                { sport: "run", day: 6, dur: 60, priority: "key", goal: "Sortie longue course", intensity: "Zone 2", structure: "10 min échauffement\n40 min allure marathon\n10 min retour au calme", note: "Reste patient, cette sortie construit ta base." },
-              ];
-
-          const workoutInserts = workoutDefs.map((wd) => ({
-            week_id: newWeek.id,
-            user_id: user.id,
-            sport_type: wd.sport,
-            scheduled_date: format(addDays(wStart, wd.day), "yyyy-MM-dd"),
-            duration_target_minutes: wd.dur,
-            workout_priority: wd.priority,
-            session_goal: wd.goal,
-            intensity_zone_label: wd.intensity,
-            structure_text: wd.structure,
-            coach_note_short: (wd as any).note || null,
-            status: "planned",
-            created_by_type: "demo",
-          }));
-
-          const { error: woErr } = await supabase.from("planned_workouts").insert(workoutInserts);
-          if (woErr) throw woErr;
-
-          weekNum++;
-        }
+      if (res.error) {
+        const msg = typeof res.error === "object" && "message" in res.error
+          ? (res.error as any).message
+          : String(res.error);
+        throw new Error(msg);
       }
 
-      toast.success("Plan démo créé avec succès !");
+      const data = res.data;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.generation_notes) {
+        setGenerationNotes(data.generation_notes);
+      }
+
+      toast.success("Plan généré avec succès !");
       await loadPlan();
     } catch (e: any) {
       console.error(e);
-      toast.error("Erreur lors de la création du plan démo.");
+      const msg = e?.message || "Erreur lors de la génération du plan.";
+      setError(msg);
+      toast.error(msg);
     } finally {
-      setSeeding(false);
+      setGenerating(false);
     }
   };
 
@@ -309,19 +230,7 @@ export default function PlanPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen py-8 px-4">
-        <div className="max-w-3xl mx-auto text-center space-y-4">
-          <p className="text-destructive">{error}</p>
-          <Button variant="outline" onClick={loadPlan}>Réessayer</Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Empty state - no plan
-  if (!plan) {
+  if (!plan && !generating) {
     return (
       <div className="min-h-screen py-8 px-4">
         <div className="max-w-3xl mx-auto space-y-6">
@@ -332,30 +241,77 @@ export default function PlanPage() {
             <div className="mx-auto w-16 h-16 rounded-full bg-gradient-subtle flex items-center justify-center">
               <Layers className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="text-2xl font-heading font-bold">Pas encore de plan</h1>
+            <h1 className="text-2xl font-heading font-bold">Générer ton plan</h1>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Ton plan d'entraînement sera bientôt disponible. Complète d'abord ton profil et ton objectif pour préparer la génération.
+              Ton plan d'entraînement sera construit à partir de ton profil, ton objectif et tes disponibilités. 
+              Il sera structuré en blocs, semaines et séances avec des priorités claires.
             </p>
+
+            {!profileComplete && (
+              <div className="flex items-start gap-3 bg-warning/10 border border-warning/30 rounded-lg p-4 text-left max-w-md mx-auto">
+                <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-warning">Profil incomplet</p>
+                  <p className="text-muted-foreground">Le plan sera généré avec des hypothèses prudentes. Tu peux d'abord compléter ton profil pour un plan plus personnalisé.</p>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="flex items-start gap-3 bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-left max-w-md mx-auto">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-              <Button onClick={() => navigate("/summary")}>Voir mon profil</Button>
               <Button
-                variant="outline"
-                onClick={seedDemoPlan}
-                disabled={seeding}
+                onClick={generatePlan}
+                disabled={generating}
                 className="gap-2"
               >
-                {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Générer un plan démo
+                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {generating ? "Génération en cours…" : "Générer mon plan"}
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/summary")}>
+                Compléter mon profil
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Le plan démo te permet de découvrir la structure. Il sera remplacé par ta planification personnalisée.
-            </p>
+            {generating && (
+              <p className="text-xs text-muted-foreground animate-pulse">
+                Analyse de ton profil et construction du plan… Cela peut prendre quelques secondes.
+              </p>
+            )}
           </div>
         </div>
       </div>
     );
   }
+
+  if (generating) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-muted-foreground text-center">Génération de ton plan en cours…</p>
+        <p className="text-xs text-muted-foreground text-center max-w-sm">
+          Le coach analyse ton profil, ton objectif et tes disponibilités pour construire un plan personnalisé.
+        </p>
+      </div>
+    );
+  }
+
+  if (error && !plan) {
+    return (
+      <div className="min-h-screen py-8 px-4">
+        <div className="max-w-3xl mx-auto text-center space-y-4">
+          <p className="text-destructive">{error}</p>
+          <Button variant="outline" onClick={loadPlan}>Réessayer</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!plan) return null;
 
   const weeksByBlock = (blockId: string) => weeks.filter((w) => w.block_id === blockId);
   const workoutsByWeek = (weekId: string) => workouts.filter((w) => w.week_id === weekId);
@@ -399,14 +355,46 @@ export default function PlanPage() {
               {formatDate(plan.start_date)} → {formatDate(plan.end_date)}
             </p>
           )}
-          {plan.notes && <p className="text-sm text-muted-foreground">{plan.notes}</p>}
+          {plan.notes && (
+            <div className="bg-gradient-subtle rounded-lg p-4 mt-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Info className="h-4 w-4 text-primary" />
+                <span className="text-sm font-heading font-semibold">Logique du plan</span>
+              </div>
+              <p className="text-sm text-muted-foreground">{plan.notes}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Generation notes */}
+        {generationNotes && (
+          <div className="flex items-start gap-3 bg-warning/10 border border-warning/30 rounded-lg p-4">
+            <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-warning">Note de génération</p>
+              <p className="text-muted-foreground">{generationNotes}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Re-generate action */}
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={generatePlan}
+            disabled={generating}
+            className="gap-2"
+          >
+            {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            Régénérer le plan
+          </Button>
         </div>
 
         {/* Blocks */}
         {blocks.length === 0 ? (
           <div className="bg-card rounded-xl shadow-card p-6 text-center space-y-2">
             <p className="text-muted-foreground">Ce plan ne contient pas encore de blocs.</p>
-            <p className="text-xs text-muted-foreground">La structure sera générée dans une prochaine étape.</p>
           </div>
         ) : (
           blocks.map((block) => {
@@ -461,7 +449,7 @@ export default function PlanPage() {
                               {wWorkouts.length > 0 && (
                                 <p className="text-xs text-muted-foreground">
                                   {wWorkouts.length} séance{wWorkouts.length > 1 ? "s" : ""}
-                                  {totalMin > 0 && ` · ${Math.round(totalMin / 60)}h${String(totalMin % 60).padStart(2, "0")}`}
+                                  {totalMin > 0 && ` · ${Math.floor(totalMin / 60)}h${String(totalMin % 60).padStart(2, "0")}`}
                                   {Object.keys(sportCounts).length > 0 && ` · ${Object.entries(sportCounts).map(([s, c]) => `${c} ${SPORT_EMOJI[s] || s}`).join(", ")}`}
                                 </p>
                               )}
