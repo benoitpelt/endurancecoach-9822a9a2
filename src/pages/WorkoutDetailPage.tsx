@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Clock, Ruler, Zap, Target, MessageSquare, Apple } from "lucide-react";
+import { Loader2, ArrowLeft, Clock, Ruler, Zap, Target, MessageSquare, Apple, Droplets } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -18,6 +18,21 @@ const PRIORITY_STYLES: Record<string, { label: string; classes: string }> = {
   key: { label: "Séance clé", classes: "bg-primary/15 text-primary border border-primary/30" },
   important: { label: "Important", classes: "bg-warning/15 text-warning border border-warning/30" },
   optional: { label: "Optionnel", classes: "bg-muted text-muted-foreground" },
+};
+
+const CARB_STRATEGY_LABELS: Record<string, string> = {
+  none: "Pas de prise nécessaire",
+  optional_low: "Optionnel : 20–30 g/h",
+  moderate: "Cible : 40–60 g/h",
+  high: "Cible : 60–90 g/h",
+  gut_training: "Séance de gut training",
+  race_strategy: "Tester la stratégie course",
+};
+
+const GUT_PRIORITY_LABELS: Record<string, string> = {
+  low: "Faible",
+  medium: "Modéré",
+  high: "Élevé",
 };
 
 export default function WorkoutDetailPage() {
@@ -79,7 +94,7 @@ export default function WorkoutDetailPage() {
   }
 
   const pr = PRIORITY_STYLES[workout.workout_priority] || PRIORITY_STYLES.important;
-  const hasNutrition = workout.carb_strategy_type || workout.carb_before_g || workout.carb_during_g_per_hour || workout.carb_total_target_g || workout.hydration_note;
+  const hasNutrition = workout.carb_strategy_type && workout.carb_strategy_type !== "none";
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -147,42 +162,61 @@ export default function WorkoutDetailPage() {
           </div>
         )}
 
-        {/* Nutrition section - structural, shows only if data present */}
+        {/* Nutrition section */}
         {hasNutrition ? (
-          <div className="bg-card rounded-xl shadow-card p-5 space-y-3">
+          <div className="bg-card rounded-xl shadow-card p-5 space-y-4 border border-accent/20">
             <div className="flex items-center gap-2">
               <Apple className="h-4 w-4 text-accent" />
-              <h2 className="font-heading font-semibold">Nutrition</h2>
+              <h2 className="font-heading font-semibold">Stratégie nutritionnelle</h2>
             </div>
+
+            {/* Strategy label */}
+            <div className="bg-accent/10 rounded-lg px-4 py-3">
+              <p className="text-sm font-medium">
+                {CARB_STRATEGY_LABELS[workout.carb_strategy_type] || workout.carb_strategy_type}
+              </p>
+            </div>
+
+            {/* Details */}
             <div className="grid grid-cols-2 gap-3 text-sm">
-              {workout.carb_strategy_type && (
-                <div><span className="text-muted-foreground">Stratégie</span><p className="font-medium">{workout.carb_strategy_type}</p></div>
-              )}
               {workout.carb_before_g != null && (
-                <div><span className="text-muted-foreground">Avant</span><p className="font-medium">{workout.carb_before_g}g glucides</p></div>
+                <div>
+                  <span className="text-muted-foreground text-xs">Avant la séance</span>
+                  <p className="font-medium">{workout.carb_before_g}g glucides</p>
+                </div>
               )}
               {workout.carb_during_g_per_hour != null && (
-                <div><span className="text-muted-foreground">Pendant</span><p className="font-medium">{workout.carb_during_g_per_hour}g/h</p></div>
+                <div>
+                  <span className="text-muted-foreground text-xs">Pendant</span>
+                  <p className="font-medium">{workout.carb_during_g_per_hour}g/h</p>
+                </div>
               )}
               {workout.carb_total_target_g != null && (
-                <div><span className="text-muted-foreground">Total cible</span><p className="font-medium">{workout.carb_total_target_g}g</p></div>
+                <div>
+                  <span className="text-muted-foreground text-xs">Total cible</span>
+                  <p className="font-medium">{workout.carb_total_target_g}g</p>
+                </div>
               )}
-              {workout.hydration_note && (
-                <div className="col-span-2"><span className="text-muted-foreground">Hydratation</span><p className="font-medium">{workout.hydration_note}</p></div>
+              {workout.gut_training_priority && (
+                <div>
+                  <span className="text-muted-foreground text-xs">Priorité gut training</span>
+                  <p className="font-medium">{GUT_PRIORITY_LABELS[workout.gut_training_priority] || workout.gut_training_priority}</p>
+                </div>
               )}
             </div>
-          </div>
-        ) : (
-          <div className="bg-muted/50 rounded-xl p-5 space-y-1">
-            <div className="flex items-center gap-2">
-              <Apple className="h-4 w-4 text-muted-foreground" />
-              <h2 className="font-heading font-semibold text-sm text-muted-foreground">Nutrition</h2>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Les recommandations nutritionnelles seront disponibles prochainement.
+
+            {workout.hydration_note && (
+              <div className="flex items-start gap-2 text-sm">
+                <Droplets className="h-4 w-4 text-accent flex-shrink-0 mt-0.5" />
+                <p className="text-muted-foreground">{workout.hydration_note}</p>
+              </div>
+            )}
+
+            <p className="text-[10px] text-muted-foreground">
+              Ces consignes sont des repères d'entraînement nutritionnel, pas des prescriptions médicales. Adapte selon tes sensations.
             </p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
