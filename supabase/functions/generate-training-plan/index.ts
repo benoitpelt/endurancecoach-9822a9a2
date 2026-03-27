@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
 });
 
 function buildPrompt(ctx: any): string {
-  const { today, targetDate, weeksUntilRace, goal, profile, enriched, metrics, availDays } = ctx;
+  const { today, targetDate, weeksUntilRace, goal, profile, enriched, metrics, availDays, isPartialFirstWeek, firstSundayStr, firstMondayAfterStr } = ctx;
 
   const dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 
