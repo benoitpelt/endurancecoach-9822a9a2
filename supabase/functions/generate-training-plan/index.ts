@@ -50,8 +50,22 @@ Deno.serve(async (req) => {
     }
 
     // Build context for AI
-    const today = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
     const targetDate = goal.target_date || null;
+
+    // Compute calendar-aligned week boundaries
+    // day: 0=Sun,1=Mon,...,6=Sat → days until next Sunday
+    const dayOfWeek = now.getUTCDay(); // 0=Sun
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    const firstSunday = new Date(now);
+    firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
+    const firstSundayStr = firstSunday.toISOString().split("T")[0];
+    const isPartialFirstWeek = dayOfWeek !== 1; // not a Monday
+    const firstMondayAfter = new Date(firstSunday);
+    firstMondayAfter.setUTCDate(firstMondayAfter.getUTCDate() + 1);
+    const firstMondayAfterStr = firstMondayAfter.toISOString().split("T")[0];
+
     let weeksUntilRace = 12;
     if (targetDate) {
       const diff = Math.floor((new Date(targetDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000));
@@ -66,6 +80,7 @@ Deno.serve(async (req) => {
 
     const prompt = buildPrompt({
       today, targetDate, weeksUntilRace, goal, profile, enriched, metrics, availDays,
+      isPartialFirstWeek, firstSundayStr, firstMondayAfterStr,
     });
 
     // Call Lovable AI
@@ -245,7 +260,7 @@ Deno.serve(async (req) => {
 });
 
 function buildPrompt(ctx: any): string {
-  const { today, targetDate, weeksUntilRace, goal, profile, enriched, metrics, availDays } = ctx;
+  const { today, targetDate, weeksUntilRace, goal, profile, enriched, metrics, availDays, isPartialFirstWeek, firstSundayStr, firstMondayAfterStr } = ctx;
 
   const dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 
@@ -310,12 +325,22 @@ function buildPrompt(ctx: any): string {
 
   return `${userContext}
 
+ALIGNEMENT CALENDAIRE (OBLIGATOIRE):
+- TOUTES les semaines d'entraînement DOIVENT être alignées sur des semaines calendaires: Lundi → Dimanche.
+- Les scheduled_date des séances doivent tomber entre le start_date (lundi) et end_date (dimanche) de leur semaine.
+${isPartialFirstWeek
+  ? `- SEMAINE PARTIELLE: Le plan commence aujourd'hui (${today}). La première semaine est partielle: du ${today} au ${firstSundayStr}. Son week_type doit être "normal" avec un volume adapté au nombre de jours restants. Les séances ne doivent être planifiées que sur les jours disponibles de cette semaine partielle.
+- La deuxième semaine commence le lundi ${firstMondayAfterStr} et toutes les semaines suivantes sont des semaines calendaires complètes (Lundi → Dimanche).`
+  : `- Aujourd'hui est un lundi. La première semaine commence le ${today} (lundi) et finit le dimanche suivant.`}
+- Les blocs doivent commencer un lundi (sauf si le premier bloc contient la semaine partielle) et finir un dimanche.
+- Ne génère JAMAIS de semaines vendredi→vendredi ou tout autre découpage non-calendaire.
+
 CONSIGNES DE GÉNÉRATION:
 - Génère un plan de ${weeksUntilRace} semaines structuré en blocs de 3 semaines + 1 semaine récupération.
 - Dernier bloc: affûtage puis semaine de course si date cible connue.
 - Répartition 80/20 (80% zone 1-2, 20% intensité).
 - Respecte les disponibilités. Si limitées, réduis le nombre de séances plutôt que tout raccourcir.
-- Au moins 1 séance de chaque discipline (natation/vélo/course) par semaine si triathlon. 
+- Au moins 1 séance de chaque discipline (natation/vélo/course) par semaine si triathlon.
 - Chaque séance a une priorité: "key" (2-3/semaine), "important" (1-2), "optional" (le reste).
 - Natation clé = technique. Vélo clé = sortie longue. Course clé = allure spécifique.
 - Progression modérée, prudence blessure.
