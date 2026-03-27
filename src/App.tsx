@@ -15,6 +15,9 @@ import AvailabilityPage from "@/pages/AvailabilityPage";
 import SummaryPage from "@/pages/SummaryPage";
 import EnrichedOnboardingPage from "@/pages/EnrichedOnboardingPage";
 import EnrichedSummaryPage from "@/pages/EnrichedSummaryPage";
+import PlanPage from "@/pages/PlanPage";
+import WeekPage from "@/pages/WeekPage";
+import WorkoutDetailPage from "@/pages/WorkoutDetailPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
