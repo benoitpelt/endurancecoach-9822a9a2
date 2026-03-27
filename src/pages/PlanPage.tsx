@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Calendar, Target, ChevronRight, Layers } from "lucide-react";
-import { format } from "date-fns";
+import { Loader2, ArrowLeft, Calendar, Target, ChevronRight, Layers, Sparkles } from "lucide-react";
+import { format, addDays, addWeeks } from "date-fns";
 import { fr } from "date-fns/locale";
+import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Brouillon",
@@ -31,6 +32,15 @@ const WEEK_TYPE_COLORS: Record<string, string> = {
   recovery: "border-l-accent",
   taper: "border-l-warning",
   race_week: "border-l-destructive",
+};
+
+const SPORT_EMOJI: Record<string, string> = {
+  swim: "🏊",
+  bike: "🚴",
+  run: "🏃",
+  strength: "💪",
+  mobility: "🧘",
+  rest: "😴",
 };
 
 type Plan = {
@@ -76,6 +86,7 @@ export default function PlanPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -93,7 +104,6 @@ export default function PlanPage() {
       setLoading(true);
       setError(null);
 
-      // Get most recent plan (active first, then draft)
       const { data: plans, error: planErr } = await supabase
         .from("training_plans")
         .select("*")
@@ -111,7 +121,6 @@ export default function PlanPage() {
       const currentPlan = plans[0] as Plan;
       setPlan(currentPlan);
 
-      // Load goal if linked
       if (currentPlan.goal_id) {
         const { data: goalData } = await supabase
           .from("race_goals")
@@ -121,7 +130,6 @@ export default function PlanPage() {
         setGoal(goalData);
       }
 
-      // Load blocks
       const { data: blocksData } = await supabase
         .from("training_blocks")
         .select("*")
@@ -134,7 +142,6 @@ export default function PlanPage() {
       if (loadedBlocks.length > 0) {
         const blockIds = loadedBlocks.map((b) => b.id);
 
-        // Load weeks
         const { data: weeksData } = await supabase
           .from("training_weeks")
           .select("*")
@@ -155,10 +162,142 @@ export default function PlanPage() {
           setWorkouts((workoutsData || []) as Workout[]);
         }
       }
-    } catch (e: any) {
+    } catch {
       setError("Impossible de charger le plan. Réessaie plus tard.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const seedDemoPlan = async () => {
+    if (!user) return;
+    try {
+      setSeeding(true);
+
+      // Get user's first goal if any
+      const { data: goals } = await supabase
+        .from("race_goals")
+        .select("id, event_name, format, goal_type")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const goalId = goals?.[0]?.id || null;
+      const goalName = goals?.[0]?.event_name || goals?.[0]?.format || "Objectif";
+
+      const today = new Date();
+      const planStart = today;
+      const planEnd = addWeeks(today, 8);
+
+      // Create plan
+      const { data: newPlan, error: pErr } = await supabase
+        .from("training_plans")
+        .insert({
+          user_id: user.id,
+          name: goalName ? `Plan — ${goalName}` : "Plan d'entraînement",
+          status: "draft",
+          goal_id: goalId,
+          start_date: format(planStart, "yyyy-MM-dd"),
+          end_date: format(planEnd, "yyyy-MM-dd"),
+          notes: "Plan squelette généré pour prévisualiser la structure. Ce plan sera remplacé par la génération intelligente.",
+        })
+        .select()
+        .single();
+
+      if (pErr) throw pErr;
+
+      const blockDefs = [
+        { name: "Bloc 1 — Base aérobie", focus: "Développement de l'endurance fondamentale", weeks: 4, weekTypes: ["normal", "normal", "normal", "recovery"] as string[] },
+        { name: "Bloc 2 — Développement spécifique", focus: "Travail au seuil et intensité", weeks: 4, weekTypes: ["normal", "normal", "taper", "race_week"] as string[] },
+      ];
+
+      let weekNum = 1;
+      for (let bi = 0; bi < blockDefs.length; bi++) {
+        const bd = blockDefs[bi];
+        const blockStart = addWeeks(planStart, bi === 0 ? 0 : blockDefs.slice(0, bi).reduce((s, b) => s + b.weeks, 0));
+        const blockEnd = addDays(addWeeks(blockStart, bd.weeks), -1);
+
+        const { data: newBlock, error: bErr } = await supabase
+          .from("training_blocks")
+          .insert({
+            plan_id: newPlan.id,
+            user_id: user.id,
+            name: bd.name,
+            block_order: bi,
+            focus: bd.focus,
+            start_date: format(blockStart, "yyyy-MM-dd"),
+            end_date: format(blockEnd, "yyyy-MM-dd"),
+          })
+          .select()
+          .single();
+
+        if (bErr) throw bErr;
+
+        for (let wi = 0; wi < bd.weeks; wi++) {
+          const wStart = addWeeks(blockStart, wi);
+          const wEnd = addDays(wStart, 6);
+
+          const { data: newWeek, error: wErr } = await supabase
+            .from("training_weeks")
+            .insert({
+              block_id: newBlock.id,
+              user_id: user.id,
+              week_number: weekNum,
+              week_type: bd.weekTypes[wi],
+              start_date: format(wStart, "yyyy-MM-dd"),
+              end_date: format(wEnd, "yyyy-MM-dd"),
+              notes: bd.weekTypes[wi] === "recovery" ? "Semaine allégée pour assimiler la charge." : null,
+            })
+            .select()
+            .single();
+
+          if (wErr) throw wErr;
+
+          // Seed workouts for this week
+          const isRecovery = bd.weekTypes[wi] === "recovery";
+          const workoutDefs = isRecovery
+            ? [
+                { sport: "swim", day: 1, dur: 30, priority: "optional", goal: "Technique & récupération active", intensity: "Zone 1", structure: "Échauffement 200m\nÉducatifs 4x50m\nSouple 400m\nRetour au calme 100m" },
+                { sport: "bike", day: 3, dur: 45, priority: "important", goal: "Récupération active vélo", intensity: "Zone 1-2", structure: "45 min vélo souple\nMoulinage léger" },
+                { sport: "run", day: 5, dur: 30, priority: "optional", goal: "Footing léger", intensity: "Zone 1", structure: "30 min footing très souple" },
+              ]
+            : [
+                { sport: "swim", day: 1, dur: 50, priority: "key", goal: "Travail technique et endurance", intensity: "Zone 2-3", structure: "Échauffement 300m\n6x100m allure seuil (r=20s)\n200m souple\n4x50m sprints\nRetour au calme 200m", note: "Concentre-toi sur ta prise d'eau et ton roulis." },
+                { sport: "run", day: 2, dur: 50, priority: "important", goal: "Endurance fondamentale", intensity: "Zone 2", structure: "10 min échauffement\n30 min allure EF\n10 min retour au calme" },
+                { sport: "bike", day: 3, dur: 75, priority: "key", goal: "Sortie longue vélo", intensity: "Zone 2-3", structure: "15 min échauffement\n45 min en endurance\n2x5 min au seuil\n10 min retour au calme", note: "Profite de la sortie pour tester ton ravitaillement." },
+                { sport: "strength", day: 4, dur: 35, priority: "optional", goal: "Renforcement musculaire", intensity: "Modérée", structure: "Gainage 3x45s\nSquats 3x12\nFentes 3x10/jambe\nPompes 3x12\nÉtirements" },
+                { sport: "run", day: 6, dur: 60, priority: "key", goal: "Sortie longue course", intensity: "Zone 2", structure: "10 min échauffement\n40 min allure marathon\n10 min retour au calme", note: "Reste patient, cette sortie construit ta base." },
+              ];
+
+          const workoutInserts = workoutDefs.map((wd) => ({
+            week_id: newWeek.id,
+            user_id: user.id,
+            sport_type: wd.sport,
+            scheduled_date: format(addDays(wStart, wd.day), "yyyy-MM-dd"),
+            duration_target_minutes: wd.dur,
+            workout_priority: wd.priority,
+            session_goal: wd.goal,
+            intensity_zone_label: wd.intensity,
+            structure_text: wd.structure,
+            coach_note_short: (wd as any).note || null,
+            status: "planned",
+            created_by_type: "demo",
+          }));
+
+          const { error: woErr } = await supabase.from("planned_workouts").insert(workoutInserts);
+          if (woErr) throw woErr;
+
+          weekNum++;
+        }
+      }
+
+      toast.success("Plan démo créé avec succès !");
+      await loadPlan();
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Erreur lors de la création du plan démo.");
+    } finally {
+      setSeeding(false);
     }
   };
 
@@ -195,9 +334,23 @@ export default function PlanPage() {
             </div>
             <h1 className="text-2xl font-heading font-bold">Pas encore de plan</h1>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Ton plan d'entraînement sera bientôt disponible. Complete d'abord ton profil et ton objectif pour préparer la génération.
+              Ton plan d'entraînement sera bientôt disponible. Complète d'abord ton profil et ton objectif pour préparer la génération.
             </p>
-            <Button onClick={() => navigate("/summary")}>Voir mon profil</Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+              <Button onClick={() => navigate("/summary")}>Voir mon profil</Button>
+              <Button
+                variant="outline"
+                onClick={seedDemoPlan}
+                disabled={seeding}
+                className="gap-2"
+              >
+                {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Générer un plan démo
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Le plan démo te permet de découvrir la structure. Il sera remplacé par ta planification personnalisée.
+            </p>
           </div>
         </div>
       </div>
@@ -328,12 +481,3 @@ export default function PlanPage() {
     </div>
   );
 }
-
-const SPORT_EMOJI: Record<string, string> = {
-  swim: "🏊",
-  bike: "🚴",
-  run: "🏃",
-  strength: "💪",
-  mobility: "🧘",
-  rest: "😴",
-};
