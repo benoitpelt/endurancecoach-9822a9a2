@@ -114,10 +114,24 @@ export default function SummaryPage() {
           )}
         </Section>
 
-        <div className="bg-gradient-subtle rounded-xl p-6 text-center space-y-3">
-          <p className="font-heading font-semibold">Prochaine étape</p>
+        {/* Plan entry */}
+        <div className="bg-card rounded-xl shadow-card p-6 space-y-3">
+          <div className="flex items-center gap-2">
+            <Layers className="h-5 w-5 text-primary" />
+            <h2 className="font-heading font-semibold text-lg">Mon plan</h2>
+          </div>
           <p className="text-sm text-muted-foreground">
-            Affine ton profil pour obtenir un plan d'entraînement encore plus pertinent et personnalisé.
+            Consulte la structure de ton plan d'entraînement, tes semaines et tes séances.
+          </p>
+          <Button onClick={() => navigate("/plan")} variant="outline">
+            Voir mon plan
+          </Button>
+        </div>
+
+        <div className="bg-gradient-subtle rounded-xl p-6 text-center space-y-3">
+          <p className="font-heading font-semibold">Affiner mon profil</p>
+          <p className="text-sm text-muted-foreground">
+            Complète ton profil détaillé pour obtenir un plan encore plus personnalisé.
           </p>
           <Button onClick={() => navigate("/onboarding/enriched")} className="mt-2">
             Affiner mon profil

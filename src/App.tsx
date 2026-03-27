@@ -40,6 +40,9 @@ const App = () => (
             <Route path="/summary" element={<ProtectedRoute><SummaryPage /></ProtectedRoute>} />
             <Route path="/onboarding/enriched" element={<ProtectedRoute><EnrichedOnboardingPage /></ProtectedRoute>} />
             <Route path="/onboarding/enriched/summary" element={<ProtectedRoute><EnrichedSummaryPage /></ProtectedRoute>} />
+            <Route path="/plan" element={<ProtectedRoute><PlanPage /></ProtectedRoute>} />
+            <Route path="/plan/week/:weekId" element={<ProtectedRoute><WeekPage /></ProtectedRoute>} />
+            <Route path="/plan/workout/:workoutId" element={<ProtectedRoute><WorkoutDetailPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
