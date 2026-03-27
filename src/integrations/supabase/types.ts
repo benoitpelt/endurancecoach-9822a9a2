@@ -233,6 +233,89 @@ export type Database = {
         }
         Relationships: []
       }
+      planned_workouts: {
+        Row: {
+          carb_before_g: number | null
+          carb_during_g_per_hour: number | null
+          carb_strategy_type: string | null
+          carb_total_target_g: number | null
+          coach_note_short: string | null
+          created_at: string
+          created_by_type: string | null
+          distance_target_km: number | null
+          duration_target_minutes: number | null
+          gut_training_priority: string | null
+          hydration_note: string | null
+          id: string
+          intensity_zone_label: string | null
+          scheduled_date: string | null
+          session_goal: string | null
+          sport_type: string
+          status: string
+          structure_text: string | null
+          updated_at: string
+          user_id: string
+          week_id: string
+          workout_priority: string
+        }
+        Insert: {
+          carb_before_g?: number | null
+          carb_during_g_per_hour?: number | null
+          carb_strategy_type?: string | null
+          carb_total_target_g?: number | null
+          coach_note_short?: string | null
+          created_at?: string
+          created_by_type?: string | null
+          distance_target_km?: number | null
+          duration_target_minutes?: number | null
+          gut_training_priority?: string | null
+          hydration_note?: string | null
+          id?: string
+          intensity_zone_label?: string | null
+          scheduled_date?: string | null
+          session_goal?: string | null
+          sport_type: string
+          status?: string
+          structure_text?: string | null
+          updated_at?: string
+          user_id: string
+          week_id: string
+          workout_priority?: string
+        }
+        Update: {
+          carb_before_g?: number | null
+          carb_during_g_per_hour?: number | null
+          carb_strategy_type?: string | null
+          carb_total_target_g?: number | null
+          coach_note_short?: string | null
+          created_at?: string
+          created_by_type?: string | null
+          distance_target_km?: number | null
+          duration_target_minutes?: number | null
+          gut_training_priority?: string | null
+          hydration_note?: string | null
+          id?: string
+          intensity_zone_label?: string | null
+          scheduled_date?: string | null
+          session_goal?: string | null
+          sport_type?: string
+          status?: string
+          structure_text?: string | null
+          updated_at?: string
+          user_id?: string
+          week_id?: string
+          workout_priority?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planned_workouts_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       race_goals: {
         Row: {
           created_at: string
@@ -280,6 +363,150 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      training_blocks: {
+        Row: {
+          block_order: number
+          created_at: string
+          end_date: string | null
+          focus: string | null
+          id: string
+          name: string
+          notes: string | null
+          plan_id: string
+          start_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          block_order?: number
+          created_at?: string
+          end_date?: string | null
+          focus?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          plan_id: string
+          start_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          block_order?: number
+          created_at?: string
+          end_date?: string | null
+          focus?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          plan_id?: string
+          start_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_blocks_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_plans: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          goal_id: string | null
+          id: string
+          name: string
+          notes: string | null
+          start_date: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          goal_id?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          goal_id?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_plans_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "race_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_weeks: {
+        Row: {
+          block_id: string
+          created_at: string
+          end_date: string | null
+          id: string
+          notes: string | null
+          start_date: string | null
+          updated_at: string
+          user_id: string
+          week_number: number
+          week_type: string
+        }
+        Insert: {
+          block_id: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+          updated_at?: string
+          user_id: string
+          week_number: number
+          week_type?: string
+        }
+        Update: {
+          block_id?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          start_date?: string | null
+          updated_at?: string
+          user_id?: string
+          week_number?: number
+          week_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_weeks_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "training_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
