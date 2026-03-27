@@ -14,6 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
+      athlete_enriched_profiles: {
+        Row: {
+          created_at: string
+          current_frequency_per_week: number | null
+          disliked_sessions: string | null
+          double_sessions: boolean | null
+          enriched_onboarding_completed: boolean | null
+          id: string
+          injuries_constraints: string | null
+          longest_recent_bike: string | null
+          longest_recent_run: string | null
+          longest_recent_swim: string | null
+          max_sessions_per_week: number | null
+          performances: Json | null
+          plan_failure_reason: string | null
+          preferred_sessions: string | null
+          sessions_per_week: number | null
+          sport_experience: Json | null
+          strength_training: boolean | null
+          strongest_discipline: string | null
+          time_preference: string | null
+          typical_sessions: string | null
+          updated_at: string
+          user_id: string
+          weakest_discipline: string | null
+          weekly_volume_hours: Json | null
+        }
+        Insert: {
+          created_at?: string
+          current_frequency_per_week?: number | null
+          disliked_sessions?: string | null
+          double_sessions?: boolean | null
+          enriched_onboarding_completed?: boolean | null
+          id?: string
+          injuries_constraints?: string | null
+          longest_recent_bike?: string | null
+          longest_recent_run?: string | null
+          longest_recent_swim?: string | null
+          max_sessions_per_week?: number | null
+          performances?: Json | null
+          plan_failure_reason?: string | null
+          preferred_sessions?: string | null
+          sessions_per_week?: number | null
+          sport_experience?: Json | null
+          strength_training?: boolean | null
+          strongest_discipline?: string | null
+          time_preference?: string | null
+          typical_sessions?: string | null
+          updated_at?: string
+          user_id: string
+          weakest_discipline?: string | null
+          weekly_volume_hours?: Json | null
+        }
+        Update: {
+          created_at?: string
+          current_frequency_per_week?: number | null
+          disliked_sessions?: string | null
+          double_sessions?: boolean | null
+          enriched_onboarding_completed?: boolean | null
+          id?: string
+          injuries_constraints?: string | null
+          longest_recent_bike?: string | null
+          longest_recent_run?: string | null
+          longest_recent_swim?: string | null
+          max_sessions_per_week?: number | null
+          performances?: Json | null
+          plan_failure_reason?: string | null
+          preferred_sessions?: string | null
+          sessions_per_week?: number | null
+          sport_experience?: Json | null
+          strength_training?: boolean | null
+          strongest_discipline?: string | null
+          time_preference?: string | null
+          typical_sessions?: string | null
+          updated_at?: string
+          user_id?: string
+          weakest_discipline?: string | null
+          weekly_volume_hours?: Json | null
+        }
+        Relationships: []
+      }
+      athlete_metric_history: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          id: string
+          metric_type: string
+          metric_unit: string | null
+          metric_value: number | null
+          notes: string | null
+          observed_at: string | null
+          source_detail: string | null
+          source_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          metric_type: string
+          metric_unit?: string | null
+          metric_value?: number | null
+          notes?: string | null
+          observed_at?: string | null
+          source_detail?: string | null
+          source_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          metric_type?: string
+          metric_unit?: string | null
+          metric_value?: number | null
+          notes?: string | null
+          observed_at?: string | null
+          source_detail?: string | null
+          source_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       athlete_profiles: {
         Row: {
           city: string | null
