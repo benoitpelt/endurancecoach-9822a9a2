@@ -13,6 +13,8 @@ import ProfilePage from "@/pages/ProfilePage";
 import GoalPage from "@/pages/GoalPage";
 import AvailabilityPage from "@/pages/AvailabilityPage";
 import SummaryPage from "@/pages/SummaryPage";
+import EnrichedOnboardingPage from "@/pages/EnrichedOnboardingPage";
+import EnrichedSummaryPage from "@/pages/EnrichedSummaryPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
