@@ -15,6 +15,9 @@ import AvailabilityPage from "@/pages/AvailabilityPage";
 import SummaryPage from "@/pages/SummaryPage";
 import EnrichedOnboardingPage from "@/pages/EnrichedOnboardingPage";
 import EnrichedSummaryPage from "@/pages/EnrichedSummaryPage";
+import PlanPage from "@/pages/PlanPage";
+import WeekPage from "@/pages/WeekPage";
+import WorkoutDetailPage from "@/pages/WorkoutDetailPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +40,9 @@ const App = () => (
             <Route path="/summary" element={<ProtectedRoute><SummaryPage /></ProtectedRoute>} />
             <Route path="/onboarding/enriched" element={<ProtectedRoute><EnrichedOnboardingPage /></ProtectedRoute>} />
             <Route path="/onboarding/enriched/summary" element={<ProtectedRoute><EnrichedSummaryPage /></ProtectedRoute>} />
+            <Route path="/plan" element={<ProtectedRoute><PlanPage /></ProtectedRoute>} />
+            <Route path="/plan/week/:weekId" element={<ProtectedRoute><WeekPage /></ProtectedRoute>} />
+            <Route path="/plan/workout/:workoutId" element={<ProtectedRoute><WorkoutDetailPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
