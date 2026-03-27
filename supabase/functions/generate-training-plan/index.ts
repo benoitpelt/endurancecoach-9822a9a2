@@ -386,6 +386,11 @@ Réponds UNIQUEMENT avec ce JSON (pas de markdown):
               "gut_training_priority": "string|null"
             }
           ]
+        }
+      ]
+    }
+  ]
+}`;
 }
 
 function getEventVolumeGuidelines(goal: any): string {
@@ -461,9 +466,4 @@ function getEventVolumeGuidelines(goal: any): string {
 - Un plan crédible doit avoir un volume cohérent avec la distance/durée de l'épreuve cible.
 - Les séances longues doivent être proportionnelles à l'épreuve.
 - Ne sous-dimensionne pas le plan.`;
-}
-      ]
-    }
-  ]
-}`;
 }
