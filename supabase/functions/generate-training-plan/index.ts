@@ -321,6 +321,21 @@ CONSIGNES DE GÉNÉRATION:
 - Progression modérée, prudence blessure.
 - Si données manquantes, reste prudent avec des volumes modérés.
 
+CALIBRATION DU VOLUME PAR RAPPORT À L'OBJECTIF:
+IMPORTANT: Le profil athlète définit le point de départ et la vitesse de progression, PAS un plafond.
+L'objectif sportif définit la trajectoire de charge cible. Le plan doit converger progressivement vers un volume cohérent avec l'événement visé.
+Un plan prudent n'est PAS un plan sous-dimensionné. Évite de produire un plan trop léger pour être crédible face à l'objectif.
+
+${getEventVolumeGuidelines(goal)}
+
+RÈGLES DE VOLUME:
+- Les semaines de récupération = environ 60-65% du volume de la semaine précédente (pas vide).
+- Les séances longues sont les piliers structurels du plan. Elles doivent exister et progresser clairement.
+- Le volume hebdo total doit progresser bloc après bloc, pas stagner.
+- Les premières semaines partent du niveau actuel de l'athlète (ou d'une estimation prudente).
+- Les dernières semaines de développement (peak) doivent atteindre un volume réaliste pour l'objectif.
+- L'affûtage réduit le volume mais maintient l'intensité.
+
 NUTRITION PAR SÉANCE:
 Pour les sorties longues (>60min vélo, >50min course), les bricks et séances spécifiques longues:
 - Remplis carb_strategy_type: "none" | "optional_low" | "moderate" | "high" | "gut_training" | "race_strategy"
