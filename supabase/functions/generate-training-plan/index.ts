@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get user from JWT
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!, {
+    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user }, error: userErr } = await userClient.auth.getUser();
@@ -321,6 +321,21 @@ CONSIGNES DE GÉNÉRATION:
 - Progression modérée, prudence blessure.
 - Si données manquantes, reste prudent avec des volumes modérés.
 
+CALIBRATION DU VOLUME PAR RAPPORT À L'OBJECTIF:
+IMPORTANT: Le profil athlète définit le point de départ et la vitesse de progression, PAS un plafond.
+L'objectif sportif définit la trajectoire de charge cible. Le plan doit converger progressivement vers un volume cohérent avec l'événement visé.
+Un plan prudent n'est PAS un plan sous-dimensionné. Évite de produire un plan trop léger pour être crédible face à l'objectif.
+
+${getEventVolumeGuidelines(goal)}
+
+RÈGLES DE VOLUME:
+- Les semaines de récupération = environ 60-65% du volume de la semaine précédente (pas vide).
+- Les séances longues sont les piliers structurels du plan. Elles doivent exister et progresser clairement.
+- Le volume hebdo total doit progresser bloc après bloc, pas stagner.
+- Les premières semaines partent du niveau actuel de l'athlète (ou d'une estimation prudente).
+- Les dernières semaines de développement (peak) doivent atteindre un volume réaliste pour l'objectif.
+- L'affûtage réduit le volume mais maintient l'intensité.
+
 NUTRITION PAR SÉANCE:
 Pour les sorties longues (>60min vélo, >50min course), les bricks et séances spécifiques longues:
 - Remplis carb_strategy_type: "none" | "optional_low" | "moderate" | "high" | "gut_training" | "race_strategy"
@@ -376,4 +391,79 @@ Réponds UNIQUEMENT avec ce JSON (pas de markdown):
     }
   ]
 }`;
+}
+
+function getEventVolumeGuidelines(goal: any): string {
+  const format = (goal.format || "").toLowerCase();
+  const goalType = (goal.goal_type || "").toLowerCase();
+
+  if (format.includes("ironman") || format.includes("long") || format.includes("full") || format.includes("im")) {
+    return `REPÈRES VOLUME IRONMAN (FULL DISTANCE):
+- Volume hebdo peak: 12-16h (minimum 10h pour un plan crédible).
+- Sortie longue vélo peak: 4h30-6h.
+- Sortie longue course peak: 2h15-3h.
+- Séance longue natation: 60-90min.
+- Brick long (vélo+course): au moins 1 toutes les 2-3 semaines en phase spécifique.
+- Semaines normales de développement: 8-14h selon la phase.
+- Semaines de récupération: 5-9h (pas en dessous de 5h).
+- Première semaine du plan: partir du volume actuel de l'athlète ou 5-7h si inconnu.
+- 5-7 séances/semaine en phase de développement, 4-6 en récupération.`;
+  }
+
+  if (format.includes("half") || format.includes("70.3") || format.includes("mi")) {
+    return `REPÈRES VOLUME HALF-IRONMAN / 70.3:
+- Volume hebdo peak: 8-12h.
+- Sortie longue vélo peak: 3h-4h30.
+- Sortie longue course peak: 1h30-2h15.
+- Séance longue natation: 50-75min.
+- Semaines normales de développement: 6-10h.
+- Semaines de récupération: 4-6h.
+- Première semaine: partir du volume actuel ou 4-6h si inconnu.
+- 5-6 séances/semaine en développement.`;
+  }
+
+  if (format.includes("olympic") || format.includes("m") || format.includes("cd") || format.includes("distance olympique")) {
+    return `REPÈRES VOLUME TRIATHLON OLYMPIQUE:
+- Volume hebdo peak: 6-9h.
+- Sortie longue vélo peak: 2h-3h.
+- Sortie longue course peak: 1h15-1h45.
+- Séance longue natation: 45-60min.
+- Semaines normales: 5-8h.
+- Semaines de récupération: 3-5h.
+- 4-6 séances/semaine.`;
+  }
+
+  if (format.includes("sprint") || format.includes("xs") || format.includes("s")) {
+    return `REPÈRES VOLUME TRIATHLON SPRINT:
+- Volume hebdo peak: 4-7h.
+- Sortie longue vélo peak: 1h30-2h30.
+- Sortie longue course peak: 50min-1h15.
+- Semaines normales: 3-6h.
+- Semaines de récupération: 2-4h.
+- 4-5 séances/semaine.`;
+  }
+
+  if (goalType.includes("marathon") && !goalType.includes("semi") && !goalType.includes("half")) {
+    return `REPÈRES VOLUME MARATHON:
+- Volume hebdo peak: 8-12h (60-90 km/semaine).
+- Sortie longue course peak: 2h30-3h30.
+- Semaines normales: 6-10h.
+- Semaines de récupération: 4-6h.
+- 5-6 séances/semaine.`;
+  }
+
+  if (goalType.includes("semi") || goalType.includes("half marathon")) {
+    return `REPÈRES VOLUME SEMI-MARATHON:
+- Volume hebdo peak: 5-8h (40-65 km/semaine).
+- Sortie longue course peak: 1h45-2h15.
+- Semaines normales: 4-7h.
+- Semaines de récupération: 3-5h.
+- 4-5 séances/semaine.`;
+  }
+
+  return `REPÈRES VOLUME GÉNÉRAUX:
+- Adapte le volume peak à l'objectif visé.
+- Un plan crédible doit avoir un volume cohérent avec la distance/durée de l'épreuve cible.
+- Les séances longues doivent être proportionnelles à l'épreuve.
+- Ne sous-dimensionne pas le plan.`;
 }
