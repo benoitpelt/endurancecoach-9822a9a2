@@ -50,8 +50,22 @@ Deno.serve(async (req) => {
     }
 
     // Build context for AI
-    const today = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
     const targetDate = goal.target_date || null;
+
+    // Compute calendar-aligned week boundaries
+    // day: 0=Sun,1=Mon,...,6=Sat → days until next Sunday
+    const dayOfWeek = now.getUTCDay(); // 0=Sun
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    const firstSunday = new Date(now);
+    firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
+    const firstSundayStr = firstSunday.toISOString().split("T")[0];
+    const isPartialFirstWeek = dayOfWeek !== 1; // not a Monday
+    const firstMondayAfter = new Date(firstSunday);
+    firstMondayAfter.setUTCDate(firstMondayAfter.getUTCDate() + 1);
+    const firstMondayAfterStr = firstMondayAfter.toISOString().split("T")[0];
+
     let weeksUntilRace = 12;
     if (targetDate) {
       const diff = Math.floor((new Date(targetDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000));
