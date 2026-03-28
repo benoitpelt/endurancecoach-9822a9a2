@@ -233,6 +233,81 @@ export type Database = {
         }
         Relationships: []
       }
+      imported_activities: {
+        Row: {
+          avg_heartrate: number | null
+          avg_power: number | null
+          avg_speed: number | null
+          calories: number | null
+          created_at: string
+          distance_meters: number | null
+          duration_seconds: number | null
+          elevation_gain_meters: number | null
+          id: string
+          max_heartrate: number | null
+          max_power: number | null
+          max_speed: number | null
+          moving_time_seconds: number | null
+          name: string | null
+          raw_payload: Json | null
+          sport_type_normalized: string | null
+          sport_type_raw: string | null
+          start_date: string | null
+          strava_id: number
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avg_heartrate?: number | null
+          avg_power?: number | null
+          avg_speed?: number | null
+          calories?: number | null
+          created_at?: string
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          elevation_gain_meters?: number | null
+          id?: string
+          max_heartrate?: number | null
+          max_power?: number | null
+          max_speed?: number | null
+          moving_time_seconds?: number | null
+          name?: string | null
+          raw_payload?: Json | null
+          sport_type_normalized?: string | null
+          sport_type_raw?: string | null
+          start_date?: string | null
+          strava_id: number
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avg_heartrate?: number | null
+          avg_power?: number | null
+          avg_speed?: number | null
+          calories?: number | null
+          created_at?: string
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          elevation_gain_meters?: number | null
+          id?: string
+          max_heartrate?: number | null
+          max_power?: number | null
+          max_speed?: number | null
+          moving_time_seconds?: number | null
+          name?: string | null
+          raw_payload?: Json | null
+          sport_type_normalized?: string | null
+          sport_type_raw?: string | null
+          start_date?: string | null
+          strava_id?: number
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       planned_workouts: {
         Row: {
           carb_before_g: number | null
@@ -359,6 +434,51 @@ export type Database = {
           secondary_objective?: string | null
           target_date?: string | null
           target_time?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      strava_connections: {
+        Row: {
+          access_token: string | null
+          connected_at: string | null
+          created_at: string
+          id: string
+          import_activity_count: number | null
+          import_status: string | null
+          last_import_at: string | null
+          refresh_token: string | null
+          strava_athlete_id: number | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          import_activity_count?: number | null
+          import_status?: string | null
+          last_import_at?: string | null
+          refresh_token?: string | null
+          strava_athlete_id?: number | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          import_activity_count?: number | null
+          import_status?: string | null
+          last_import_at?: string | null
+          refresh_token?: string | null
+          strava_athlete_id?: number | null
+          token_expires_at?: string | null
           updated_at?: string
           user_id?: string
         }
