@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Calendar, Target, ChevronRight, Layers, Sparkles, AlertTriangle, Info } from "lucide-react";
+import { Loader2, ArrowLeft, Calendar, Target, ChevronRight, Layers, Sparkles, AlertTriangle, Info, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -273,7 +273,11 @@ export default function PlanPage() {
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 {generating ? "Génération en cours…" : "Générer mon plan"}
               </Button>
-              <Button variant="outline" onClick={() => navigate("/summary")}>
+              <Button variant="outline" onClick={() => navigate("/strava")} className="gap-2">
+                <Activity className="h-4 w-4" />
+                Connecter Strava
+              </Button>
+              <Button variant="ghost" onClick={() => navigate("/summary")}>
                 Compléter mon profil
               </Button>
             </div>
@@ -377,8 +381,17 @@ export default function PlanPage() {
           </div>
         )}
 
-        {/* Re-generate action */}
-        <div className="flex justify-end">
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/strava")}
+            className="gap-2"
+          >
+            <Activity className="h-3.5 w-3.5" />
+            Strava
+          </Button>
           <Button
             variant="outline"
             size="sm"

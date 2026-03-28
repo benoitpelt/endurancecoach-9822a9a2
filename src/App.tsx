@@ -18,6 +18,7 @@ import EnrichedSummaryPage from "@/pages/EnrichedSummaryPage";
 import PlanPage from "@/pages/PlanPage";
 import WeekPage from "@/pages/WeekPage";
 import WorkoutDetailPage from "@/pages/WorkoutDetailPage";
+import StravaPage from "@/pages/StravaPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/plan" element={<ProtectedRoute><PlanPage /></ProtectedRoute>} />
             <Route path="/plan/week/:weekId" element={<ProtectedRoute><WeekPage /></ProtectedRoute>} />
             <Route path="/plan/workout/:workoutId" element={<ProtectedRoute><WorkoutDetailPage /></ProtectedRoute>} />
+            <Route path="/strava" element={<ProtectedRoute><StravaPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
