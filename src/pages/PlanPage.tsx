@@ -273,7 +273,11 @@ export default function PlanPage() {
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 {generating ? "Génération en cours…" : "Générer mon plan"}
               </Button>
-              <Button variant="outline" onClick={() => navigate("/summary")}>
+              <Button variant="outline" onClick={() => navigate("/strava")} className="gap-2">
+                <Activity className="h-4 w-4" />
+                Connecter Strava
+              </Button>
+              <Button variant="ghost" onClick={() => navigate("/summary")}>
                 Compléter mon profil
               </Button>
             </div>
