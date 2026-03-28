@@ -12,7 +12,6 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("Non autorisé");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -35,18 +34,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify user
+    // All other actions require auth
+    if (!authHeader) throw new Error("Non autorisé");
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user }, error: userErr } = await userClient.auth.getUser();
     if (userErr || !user) throw new Error("Non autorisé");
-    if (userErr || !user) throw new Error("Non autorisé");
-
-    const body = await req.json();
-    const { action, code } = body;
-
-    const supabase = createClient(supabaseUrl, serviceKey);
 
     if (action === "exchange") {
       // Exchange authorization code for tokens
