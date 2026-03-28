@@ -178,13 +178,22 @@ export default function StravaPage() {
     }
   };
 
-  const connectStrava = () => {
-    const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID;
-    // Fallback: we'll pass the client ID through the redirect URL
-    const redirectUri = `${window.location.origin}/strava`;
-    const scope = "read,activity:read_all";
-    const url = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&approval_prompt=auto`;
-    window.location.href = url;
+  const connectStrava = async () => {
+    try {
+      const token = await getToken();
+      const res = await supabase.functions.invoke("strava-auth", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: { action: "get_client_id" },
+      });
+      const clientId = res.data?.client_id;
+      if (!clientId) throw new Error("Configuration Strava manquante.");
+      const redirectUri = `${window.location.origin}/strava`;
+      const scope = "read,activity:read_all";
+      const url = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&approval_prompt=auto`;
+      window.location.href = url;
+    } catch (e) {
+      toast.error("Impossible d'initier la connexion Strava.");
+    }
   };
 
   const disconnectStrava = async () => {

@@ -18,6 +18,7 @@ import EnrichedSummaryPage from "@/pages/EnrichedSummaryPage";
 import PlanPage from "@/pages/PlanPage";
 import WeekPage from "@/pages/WeekPage";
 import WorkoutDetailPage from "@/pages/WorkoutDetailPage";
+import StravaPage from "@/pages/StravaPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();

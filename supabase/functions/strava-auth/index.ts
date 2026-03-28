@@ -24,11 +24,23 @@ Deno.serve(async (req) => {
       throw new Error("Configuration Strava manquante.");
     }
 
+    const body = await req.json();
+    const { action, code } = body;
+
+    const supabase = createClient(supabaseUrl, serviceKey);
+
+    if (action === "get_client_id") {
+      return new Response(JSON.stringify({ client_id: stravaClientId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Verify user
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) throw new Error("Non autorisé");
     if (userErr || !user) throw new Error("Non autorisé");
 
     const body = await req.json();
