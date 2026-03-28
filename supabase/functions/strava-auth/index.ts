@@ -117,49 +117,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
 
-    } else if (action === "refresh_token") {
-      // Refresh access token if expired
-      const { data: conn } = await supabase
-        .from("strava_connections")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (!conn) throw new Error("Aucune connexion Strava trouvée.");
-
-      const now = new Date();
-      const expiresAt = new Date(conn.token_expires_at);
-      
-      if (expiresAt > now) {
-        return new Response(JSON.stringify({ access_token: conn.access_token }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const refreshRes = await fetch("https://www.strava.com/oauth/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: stravaClientId,
-          client_secret: stravaClientSecret,
-          refresh_token: conn.refresh_token,
-          grant_type: "refresh_token",
-        }),
-      });
-
-      if (!refreshRes.ok) throw new Error("Impossible de rafraîchir le token Strava.");
-
-      const refreshData = await refreshRes.json();
-      await supabase.from("strava_connections").update({
-        access_token: refreshData.access_token,
-        refresh_token: refreshData.refresh_token,
-        token_expires_at: new Date(refreshData.expires_at * 1000).toISOString(),
-      }).eq("user_id", user.id);
-
-      return new Response(JSON.stringify({ access_token: refreshData.access_token }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-
     } else {
       throw new Error("Action non reconnue.");
     }
