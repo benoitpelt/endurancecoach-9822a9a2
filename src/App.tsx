@@ -44,6 +44,7 @@ const App = () => (
             <Route path="/plan" element={<ProtectedRoute><PlanPage /></ProtectedRoute>} />
             <Route path="/plan/week/:weekId" element={<ProtectedRoute><WeekPage /></ProtectedRoute>} />
             <Route path="/plan/workout/:workoutId" element={<ProtectedRoute><WorkoutDetailPage /></ProtectedRoute>} />
+            <Route path="/strava" element={<ProtectedRoute><StravaPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
