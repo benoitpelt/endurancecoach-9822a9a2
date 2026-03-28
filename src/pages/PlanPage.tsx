@@ -377,8 +377,17 @@ export default function PlanPage() {
           </div>
         )}
 
-        {/* Re-generate action */}
-        <div className="flex justify-end">
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/strava")}
+            className="gap-2"
+          >
+            <Activity className="h-3.5 w-3.5" />
+            Strava
+          </Button>
           <Button
             variant="outline"
             size="sm"
