@@ -567,7 +567,7 @@ export default function StravaPage() {
         )}
 
         {/* Connected actions: disconnect + reimport */}
-        {connectionStatus?.connected && pageState !== "importing" && pageState !== "exchanging" && (
+        {connectionStatus?.connected && pageState !== "importing" && pageState !== "loading" && (
           <div className="bg-card rounded-xl shadow-card p-4 flex flex-wrap gap-3">
             {(connectionStatus.connection?.import_status === "success" || connectionStatus.connection?.import_status === "partial") && (
               <Button variant="outline" size="sm" onClick={launchImport} className="gap-2">
