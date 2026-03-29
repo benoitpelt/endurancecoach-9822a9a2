@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Calendar, Target, ChevronRight, Layers, Sparkles, AlertTriangle, Info, Activity } from "lucide-react";
+import { Loader2, ArrowLeft, Calendar, Target, ChevronRight, Layers, Sparkles, AlertTriangle, Info, Activity, Dumbbell } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -383,6 +383,15 @@ export default function PlanPage() {
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/activities")}
+            className="gap-2"
+          >
+            <Dumbbell className="h-3.5 w-3.5" />
+            Mes activités
+          </Button>
           <Button
             variant="outline"
             size="sm"
