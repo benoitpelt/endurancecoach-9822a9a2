@@ -76,39 +76,24 @@ export default function CompletedWorkoutDetailPage() {
       setWorkout(cw);
 
       // Load planned workout and feedback in parallel
-      const promises: Promise<any>[] = [];
-
       if (cw.planned_workout_id) {
-        promises.push(
-          supabase.from("planned_workouts").select("*").eq("id", cw.planned_workout_id).maybeSingle()
-            .then(({ data }) => setPlanned(data))
-        );
+        const { data: pw } = await supabase.from("planned_workouts").select("*").eq("id", cw.planned_workout_id).maybeSingle();
+        setPlanned(pw);
       }
 
-      promises.push(
-        supabase.from("completed_workout_feedback").select("*").eq("completed_workout_id", workoutId!).maybeSingle()
-          .then(({ data }) => {
-            setFeedback(data);
-            if (data) {
-              setRpe(data.rpe || 5);
-              setFatigue(data.fatigue_after || 3);
-              setComment(data.comment_text || "");
-            }
-          })
-      );
+      const { data: fb } = await supabase.from("completed_workout_feedback").select("*").eq("completed_workout_id", workoutId!).maybeSingle();
+      if (fb) {
+        setFeedback(fb);
+        setRpe(fb.rpe || 5);
+        setFatigue(fb.fatigue_after || 3);
+        setComment(fb.comment_text || "");
+      }
 
-      // Check for existing detailed analysis
-      promises.push(
-        supabase.from("workout_analyses").select("*")
-          .eq("completed_workout_id", workoutId!)
-          .eq("analysis_type", "detailed")
-          .maybeSingle()
-          .then(({ data }) => {
-            if (data) setDetailedAnalysis(data);
-          })
-      );
-
-      await Promise.all(promises);
+      const { data: da } = await supabase.from("workout_analyses").select("*")
+        .eq("completed_workout_id", workoutId!)
+        .eq("analysis_type", "detailed")
+        .maybeSingle();
+      if (da) setDetailedAnalysis(da);
     } catch (e) {
       console.error(e);
     } finally {
