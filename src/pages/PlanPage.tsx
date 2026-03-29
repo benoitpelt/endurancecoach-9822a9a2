@@ -386,6 +386,15 @@ export default function PlanPage() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => navigate("/activities")}
+            className="gap-2"
+          >
+            <Dumbbell className="h-3.5 w-3.5" />
+            Mes activités
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => navigate("/strava")}
             className="gap-2"
           >
