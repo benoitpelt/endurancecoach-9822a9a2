@@ -19,6 +19,8 @@ import PlanPage from "@/pages/PlanPage";
 import WeekPage from "@/pages/WeekPage";
 import WorkoutDetailPage from "@/pages/WorkoutDetailPage";
 import StravaPage from "@/pages/StravaPage";
+import ActivitiesPage from "@/pages/ActivitiesPage";
+import CompletedWorkoutDetailPage from "@/pages/CompletedWorkoutDetailPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
