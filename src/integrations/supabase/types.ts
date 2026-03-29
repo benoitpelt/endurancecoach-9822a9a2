@@ -200,6 +200,137 @@ export type Database = {
         }
         Relationships: []
       }
+      completed_workout_feedback: {
+        Row: {
+          comment_text: string | null
+          completed_workout_id: string
+          created_at: string
+          fatigue_after: number | null
+          id: string
+          rpe: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_text?: string | null
+          completed_workout_id: string
+          created_at?: string
+          fatigue_after?: number | null
+          id?: string
+          rpe?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_text?: string | null
+          completed_workout_id?: string
+          created_at?: string
+          fatigue_after?: number | null
+          id?: string
+          rpe?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completed_workout_feedback_completed_workout_id_fkey"
+            columns: ["completed_workout_id"]
+            isOneToOne: true
+            referencedRelation: "completed_workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      completed_workouts: {
+        Row: {
+          activity_name: string | null
+          avg_heartrate: number | null
+          avg_power: number | null
+          avg_speed: number | null
+          calories: number | null
+          conformity_status: string | null
+          created_at: string
+          distance_meters: number | null
+          duration_seconds: number | null
+          elevation_gain_meters: number | null
+          id: string
+          imported_activity_id: string | null
+          matching_status: string
+          max_heartrate: number | null
+          moving_time_seconds: number | null
+          planned_workout_id: string | null
+          requires_adjustment_review: boolean | null
+          short_analysis: string | null
+          sport_type: string
+          start_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_name?: string | null
+          avg_heartrate?: number | null
+          avg_power?: number | null
+          avg_speed?: number | null
+          calories?: number | null
+          conformity_status?: string | null
+          created_at?: string
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          elevation_gain_meters?: number | null
+          id?: string
+          imported_activity_id?: string | null
+          matching_status?: string
+          max_heartrate?: number | null
+          moving_time_seconds?: number | null
+          planned_workout_id?: string | null
+          requires_adjustment_review?: boolean | null
+          short_analysis?: string | null
+          sport_type: string
+          start_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_name?: string | null
+          avg_heartrate?: number | null
+          avg_power?: number | null
+          avg_speed?: number | null
+          calories?: number | null
+          conformity_status?: string | null
+          created_at?: string
+          distance_meters?: number | null
+          duration_seconds?: number | null
+          elevation_gain_meters?: number | null
+          id?: string
+          imported_activity_id?: string | null
+          matching_status?: string
+          max_heartrate?: number | null
+          moving_time_seconds?: number | null
+          planned_workout_id?: string | null
+          requires_adjustment_review?: boolean | null
+          short_analysis?: string | null
+          sport_type?: string
+          start_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completed_workouts_imported_activity_id_fkey"
+            columns: ["imported_activity_id"]
+            isOneToOne: true
+            referencedRelation: "imported_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completed_workouts_planned_workout_id_fkey"
+            columns: ["planned_workout_id"]
+            isOneToOne: false
+            referencedRelation: "planned_workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       default_availability_rules: {
         Row: {
           created_at: string
@@ -624,6 +755,62 @@ export type Database = {
             columns: ["block_id"]
             isOneToOne: false
             referencedRelation: "training_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_analyses: {
+        Row: {
+          actual_summary: string | null
+          analysis_type: string
+          comparison_text: string | null
+          completed_workout_id: string
+          conformity_status: string | null
+          created_at: string
+          id: string
+          interpretation_text: string | null
+          planned_summary: string | null
+          requires_adjustment_review: boolean | null
+          updated_at: string
+          user_id: string
+          vigilance_signals: Json | null
+        }
+        Insert: {
+          actual_summary?: string | null
+          analysis_type?: string
+          comparison_text?: string | null
+          completed_workout_id: string
+          conformity_status?: string | null
+          created_at?: string
+          id?: string
+          interpretation_text?: string | null
+          planned_summary?: string | null
+          requires_adjustment_review?: boolean | null
+          updated_at?: string
+          user_id: string
+          vigilance_signals?: Json | null
+        }
+        Update: {
+          actual_summary?: string | null
+          analysis_type?: string
+          comparison_text?: string | null
+          completed_workout_id?: string
+          conformity_status?: string | null
+          created_at?: string
+          id?: string
+          interpretation_text?: string | null
+          planned_summary?: string | null
+          requires_adjustment_review?: boolean | null
+          updated_at?: string
+          user_id?: string
+          vigilance_signals?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_analyses_completed_workout_id_fkey"
+            columns: ["completed_workout_id"]
+            isOneToOne: false
+            referencedRelation: "completed_workouts"
             referencedColumns: ["id"]
           },
         ]
