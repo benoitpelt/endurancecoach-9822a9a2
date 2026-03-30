@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
           { role: "user", content: prompt },
         ],
         temperature: 0.4,
+        max_tokens: 65536,
       }),
     });
 
