@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
           { role: "user", content: prompt },
         ],
         temperature: 0.4,
+        max_tokens: 65536,
       }),
     });
 
@@ -106,16 +107,36 @@ Deno.serve(async (req) => {
       throw new Error("Erreur lors de la génération du plan.");
     }
 
-    const aiData = await aiRes.json();
+    const aiText = await aiRes.text();
+    if (!aiText || aiText.trim().length === 0) {
+      console.error("AI returned empty response");
+      throw new Error("La réponse du générateur est vide. Réessaie.");
+    }
+
+    let aiData: any;
+    try {
+      aiData = JSON.parse(aiText);
+    } catch (e) {
+      console.error("Failed to parse AI gateway response:", aiText.substring(0, 300));
+      throw new Error("Erreur de communication avec le générateur.");
+    }
+
     let rawContent = aiData.choices?.[0]?.message?.content || "";
+    
+    const finishReason = aiData.choices?.[0]?.finish_reason;
+    if (finishReason === "length") {
+      console.error("AI response truncated (finish_reason=length)");
+      throw new Error("Le plan généré est trop long et a été tronqué. Réessaie.");
+    }
+
     rawContent = rawContent.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
 
     let planData: any;
     try {
       planData = JSON.parse(rawContent);
     } catch {
-      console.error("Failed to parse AI response:", rawContent.substring(0, 500));
-      throw new Error("Erreur de format dans la réponse du générateur.");
+      console.error("Failed to parse plan JSON:", rawContent.substring(0, 500));
+      throw new Error("Erreur de format dans la réponse du générateur. Réessaie.");
     }
 
     // Delete any existing draft plans for this user
