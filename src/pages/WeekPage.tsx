@@ -8,21 +8,15 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 const WEEK_TYPE_LABELS: Record<string, string> = {
-  normal: "Normale",
-  recovery: "Récupération",
-  taper: "Affûtage",
-  race_week: "Semaine de course",
+  normal: "Normale", recovery: "Récupération", taper: "Affûtage", race_week: "Semaine de course",
 };
-
 const SPORT_LABELS: Record<string, string> = {
   swim: "Natation", bike: "Vélo", run: "Course à pied",
   strength: "Renforcement", mobility: "Mobilité", rest: "Repos",
 };
-
 const SPORT_EMOJI: Record<string, string> = {
   swim: "🏊", bike: "🚴", run: "🏃", strength: "💪", mobility: "🧘", rest: "😴",
 };
-
 const PRIORITY_STYLES: Record<string, { label: string; classes: string }> = {
   key: { label: "Clé", classes: "bg-primary/15 text-primary border border-primary/30" },
   important: { label: "Important", classes: "bg-warning/15 text-warning border border-warning/30" },
@@ -38,7 +32,10 @@ type Workout = {
   session_goal: string | null;
   duration_target_minutes: number | null;
   distance_target_km: number | null;
+  distance_target_meters: number | null;
   intensity_zone_label: string | null;
+  target_summary_label: string | null;
+  primary_target_value_text: string | null;
   carb_strategy_type: string | null;
   gut_training_priority: string | null;
 };
@@ -61,29 +58,16 @@ export default function WeekPage() {
     try {
       setLoading(true);
       setError(null);
-
       const { data: weekData, error: wErr } = await supabase
-        .from("training_weeks")
-        .select("*")
-        .eq("id", weekId!)
-        .eq("user_id", user!.id)
-        .maybeSingle();
-
+        .from("training_weeks").select("*").eq("id", weekId!).eq("user_id", user!.id).maybeSingle();
       if (wErr) throw wErr;
-      if (!weekData) {
-        setError("Semaine introuvable.");
-        setLoading(false);
-        return;
-      }
+      if (!weekData) { setError("Semaine introuvable."); setLoading(false); return; }
       setWeek(weekData);
 
       const { data: workoutsData } = await supabase
         .from("planned_workouts")
-        .select("*")
-        .eq("week_id", weekId!)
-        .eq("user_id", user!.id)
-        .order("scheduled_date");
-
+        .select("id, sport_type, scheduled_date, workout_priority, status, session_goal, duration_target_minutes, distance_target_km, distance_target_meters, intensity_zone_label, target_summary_label, primary_target_value_text, carb_strategy_type, gut_training_priority")
+        .eq("week_id", weekId!).eq("user_id", user!.id).order("scheduled_date");
       setWorkouts((workoutsData || []) as Workout[]);
     } catch {
       setError("Erreur de chargement.");
@@ -92,29 +76,27 @@ export default function WeekPage() {
     }
   };
 
-  const formatDate = (d: string | null) => {
+  const fmtDate = (d: string | null) => {
     if (!d) return "—";
     try { return format(new Date(d), "EEEE d MMM", { locale: fr }); } catch { return d; }
   };
 
-  const hasNutrition = (wo: Workout) =>
-    wo.carb_strategy_type && wo.carb_strategy_type !== "none";
+  const hasNutrition = (wo: Workout) => wo.carb_strategy_type && wo.carb_strategy_type !== "none";
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const getDistanceLabel = (wo: Workout): string | null => {
+    if (wo.sport_type === "swim" && wo.distance_target_meters) return `${wo.distance_target_meters}m`;
+    if (wo.distance_target_km) return `${wo.distance_target_km}km`;
+    if (wo.distance_target_meters) return `${(wo.distance_target_meters / 1000).toFixed(1)}km`;
+    return null;
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   if (error || !week) {
     return (
       <div className="min-h-screen py-8 px-4">
         <div className="max-w-3xl mx-auto space-y-4">
-          <Button variant="ghost" onClick={() => navigate("/plan")} className="gap-2">
-            <ArrowLeft className="h-4 w-4" /> Retour au plan
-          </Button>
+          <Button variant="ghost" onClick={() => navigate("/plan")} className="gap-2"><ArrowLeft className="h-4 w-4" /> Retour au plan</Button>
           <p className="text-destructive text-center">{error || "Semaine introuvable."}</p>
         </div>
       </div>
@@ -124,9 +106,7 @@ export default function WeekPage() {
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-3xl mx-auto space-y-6">
-        <Button variant="ghost" onClick={() => navigate("/plan")} className="gap-2">
-          <ArrowLeft className="h-4 w-4" /> Retour au plan
-        </Button>
+        <Button variant="ghost" onClick={() => navigate("/plan")} className="gap-2"><ArrowLeft className="h-4 w-4" /> Retour au plan</Button>
 
         {/* Week header */}
         <div className="bg-card rounded-xl shadow-card p-6 space-y-2">
@@ -137,9 +117,7 @@ export default function WeekPage() {
             </span>
           </div>
           {(week.start_date || week.end_date) && (
-            <p className="text-sm text-muted-foreground">
-              {formatDate(week.start_date)} → {formatDate(week.end_date)}
-            </p>
+            <p className="text-sm text-muted-foreground">{fmtDate(week.start_date)} → {fmtDate(week.end_date)}</p>
           )}
           {week.notes && <p className="text-sm text-muted-foreground">{week.notes}</p>}
         </div>
@@ -148,13 +126,13 @@ export default function WeekPage() {
         {workouts.length === 0 ? (
           <div className="bg-card rounded-xl shadow-card p-6 text-center space-y-2">
             <p className="text-muted-foreground">Aucune séance prévue cette semaine.</p>
-            <p className="text-xs text-muted-foreground">Les séances seront générées prochainement.</p>
           </div>
         ) : (
           <div className="space-y-3">
             {workouts.map((wo) => {
               const pr = PRIORITY_STYLES[wo.workout_priority] || PRIORITY_STYLES.important;
               const showNutrition = hasNutrition(wo);
+              const dist = getDistanceLabel(wo);
               return (
                 <button
                   key={wo.id}
@@ -169,25 +147,24 @@ export default function WeekPage() {
                           <span className="font-heading font-semibold text-sm">
                             {SPORT_LABELS[wo.sport_type] || wo.sport_type}
                           </span>
-                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${pr.classes}`}>
-                            {pr.label}
-                          </span>
+                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${pr.classes}`}>{pr.label}</span>
                           {showNutrition && (
                             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 flex items-center gap-1">
-                              <Apple className="h-2.5 w-2.5" />
-                              Nutri
+                              <Apple className="h-2.5 w-2.5" /> Nutri
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {formatDate(wo.scheduled_date)}
-                          {wo.duration_target_minutes && ` · ${wo.duration_target_minutes} min`}
-                          {wo.distance_target_km && ` · ${wo.distance_target_km} km`}
-                          {wo.intensity_zone_label && ` · ${wo.intensity_zone_label}`}
-                        </p>
-                        {wo.session_goal && (
-                          <p className="text-xs text-muted-foreground truncate">{wo.session_goal}</p>
+                        {/* Target summary - the key improvement */}
+                        {wo.target_summary_label && (
+                          <p className="text-xs font-medium text-primary truncate">{wo.target_summary_label}</p>
                         )}
+                        <p className="text-xs text-muted-foreground truncate">
+                          {fmtDate(wo.scheduled_date)}
+                          {wo.duration_target_minutes && ` · ${wo.duration_target_minutes}min`}
+                          {dist && ` · ${dist}`}
+                          {wo.primary_target_value_text && ` · ${wo.primary_target_value_text}`}
+                          {!wo.primary_target_value_text && wo.intensity_zone_label && ` · ${wo.intensity_zone_label}`}
+                        </p>
                       </div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
