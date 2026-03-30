@@ -83,29 +83,34 @@ Deno.serve(async (req) => {
 
     if (!conn) throw new Error("Aucune connexion Strava trouvée.");
 
-    // Refresh token if needed
-    let accessToken = conn.access_token;
+    // Decrypt tokens
+    let accessToken = await decryptToken(conn.access_token);
     const now = new Date();
     const expiresAt = new Date(conn.token_expires_at);
 
     if (expiresAt <= now) {
       if (!stravaClientId || !stravaClientSecret) throw new Error("Configuration Strava manquante.");
+      const decryptedRefresh = await decryptToken(conn.refresh_token);
       const refreshRes = await fetch("https://www.strava.com/oauth/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           client_id: stravaClientId,
           client_secret: stravaClientSecret,
-          refresh_token: conn.refresh_token,
+          refresh_token: decryptedRefresh,
           grant_type: "refresh_token",
         }),
       });
       if (!refreshRes.ok) throw new Error("Token Strava expiré, reconnexion nécessaire.");
       const refreshData = await refreshRes.json();
       accessToken = refreshData.access_token;
+
+      // Re-encrypt new tokens before storing
+      const encAccess = await encryptToken(refreshData.access_token);
+      const encRefresh = await encryptToken(refreshData.refresh_token);
       await supabase.from("strava_connections").update({
-        access_token: refreshData.access_token,
-        refresh_token: refreshData.refresh_token,
+        access_token: encAccess,
+        refresh_token: encRefresh,
         token_expires_at: new Date(refreshData.expires_at * 1000).toISOString(),
       }).eq("user_id", user.id);
     }
