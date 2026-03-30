@@ -20,6 +20,37 @@ function normalizeSport(raw: string): string {
   return SPORT_MAP[raw] || "other";
 }
 
+// --- Token encryption helpers (AES-256-GCM) ---
+async function getEncryptionKey(): Promise<CryptoKey | null> {
+  const hexKey = Deno.env.get("STRAVA_TOKEN_ENCRYPTION_KEY");
+  if (!hexKey || hexKey.length < 64) return null;
+  const keyBytes = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) keyBytes[i] = parseInt(hexKey.substring(i * 2, i * 2 + 2), 16);
+  return crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+async function decryptToken(stored: string): Promise<string> {
+  if (!stored.startsWith("enc:")) return stored; // legacy plaintext
+  const key = await getEncryptionKey();
+  if (!key) throw new Error("Encryption key missing, cannot decrypt tokens.");
+  const parts = stored.split(":");
+  const iv = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0));
+  const cipher = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
+  const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+  return new TextDecoder().decode(plainBuf);
+}
+
+async function encryptToken(plaintext: string): Promise<string> {
+  const key = await getEncryptionKey();
+  if (!key) return plaintext;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(plaintext);
+  const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+  const ivB64 = btoa(String.fromCharCode(...iv));
+  const cipherB64 = btoa(String.fromCharCode(...new Uint8Array(cipherBuf)));
+  return `enc:${ivB64}:${cipherB64}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -52,29 +83,34 @@ Deno.serve(async (req) => {
 
     if (!conn) throw new Error("Aucune connexion Strava trouvée.");
 
-    // Refresh token if needed
-    let accessToken = conn.access_token;
+    // Decrypt tokens
+    let accessToken = await decryptToken(conn.access_token);
     const now = new Date();
     const expiresAt = new Date(conn.token_expires_at);
 
     if (expiresAt <= now) {
       if (!stravaClientId || !stravaClientSecret) throw new Error("Configuration Strava manquante.");
+      const decryptedRefresh = await decryptToken(conn.refresh_token);
       const refreshRes = await fetch("https://www.strava.com/oauth/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           client_id: stravaClientId,
           client_secret: stravaClientSecret,
-          refresh_token: conn.refresh_token,
+          refresh_token: decryptedRefresh,
           grant_type: "refresh_token",
         }),
       });
       if (!refreshRes.ok) throw new Error("Token Strava expiré, reconnexion nécessaire.");
       const refreshData = await refreshRes.json();
       accessToken = refreshData.access_token;
+
+      // Re-encrypt new tokens before storing
+      const encAccess = await encryptToken(refreshData.access_token);
+      const encRefresh = await encryptToken(refreshData.refresh_token);
       await supabase.from("strava_connections").update({
-        access_token: refreshData.access_token,
-        refresh_token: refreshData.refresh_token,
+        access_token: encAccess,
+        refresh_token: encRefresh,
         token_expires_at: new Date(refreshData.expires_at * 1000).toISOString(),
       }).eq("user_id", user.id);
     }

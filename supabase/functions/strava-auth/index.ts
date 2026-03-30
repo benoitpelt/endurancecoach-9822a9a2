@@ -5,6 +5,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// --- Token encryption helpers (AES-256-GCM) ---
+async function getEncryptionKey(): Promise<CryptoKey | null> {
+  const hexKey = Deno.env.get("STRAVA_TOKEN_ENCRYPTION_KEY");
+  if (!hexKey || hexKey.length < 64) return null;
+  const keyBytes = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) keyBytes[i] = parseInt(hexKey.substring(i * 2, i * 2 + 2), 16);
+  return crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+async function encryptToken(plaintext: string): Promise<string> {
+  const key = await getEncryptionKey();
+  if (!key) return plaintext; // fallback: store plaintext if no key
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(plaintext);
+  const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+  const ivB64 = btoa(String.fromCharCode(...iv));
+  const cipherB64 = btoa(String.fromCharCode(...new Uint8Array(cipherBuf)));
+  return `enc:${ivB64}:${cipherB64}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -43,7 +63,6 @@ Deno.serve(async (req) => {
     if (userErr || !user) throw new Error("Non autorisé");
 
     if (action === "exchange") {
-      // Exchange authorization code for tokens
       if (!code) throw new Error("Code d'autorisation manquant.");
 
       const tokenRes = await fetch("https://www.strava.com/oauth/token", {
@@ -66,14 +85,17 @@ Deno.serve(async (req) => {
       const tokenData = await tokenRes.json();
       const { access_token, refresh_token, expires_at, athlete } = tokenData;
 
-      // Upsert strava connection
+      // Encrypt tokens before storing
+      const encAccessToken = await encryptToken(access_token);
+      const encRefreshToken = await encryptToken(refresh_token);
+
       const { error: upsertErr } = await supabase
         .from("strava_connections")
         .upsert({
           user_id: user.id,
           strava_athlete_id: athlete?.id || null,
-          access_token,
-          refresh_token,
+          access_token: encAccessToken,
+          refresh_token: encRefreshToken,
           token_expires_at: new Date(expires_at * 1000).toISOString(),
           connected_at: new Date().toISOString(),
           import_status: "none",
@@ -89,7 +111,6 @@ Deno.serve(async (req) => {
       });
 
     } else if (action === "disconnect") {
-      // Delete connection and imported activities
       await supabase.from("imported_activities").delete().eq("user_id", user.id);
       await supabase.from("strava_connections").delete().eq("user_id", user.id);
 
