@@ -29,12 +29,13 @@ Deno.serve(async (req) => {
     const userId = user.id;
 
     // Load all user data in parallel
-    const [profileRes, goalRes, enrichedRes, metricsRes, availRes] = await Promise.all([
+    const [profileRes, goalRes, enrichedRes, metricsRes, availRes, recentWorkoutsRes] = await Promise.all([
       supabase.from("athlete_profiles").select("*").eq("user_id", userId).maybeSingle(),
       supabase.from("race_goals").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       supabase.from("athlete_enriched_profiles").select("*").eq("user_id", userId).maybeSingle(),
       supabase.from("athlete_metric_history").select("*").eq("user_id", userId).order("observed_at", { ascending: false }).limit(20),
       supabase.from("default_availability_rules").select("*").eq("user_id", userId).order("day_of_week"),
+      supabase.from("completed_workouts").select("sport_type, duration_seconds, distance_meters, avg_heartrate, avg_power, avg_speed, start_date, conformity_status, activity_name").eq("user_id", userId).order("start_date", { ascending: false }).limit(15),
     ]);
 
     const profile = profileRes.data;
@@ -42,6 +43,7 @@ Deno.serve(async (req) => {
     const enriched = enrichedRes.data;
     const metrics = metricsRes.data || [];
     const availability = availRes.data || [];
+    const recentWorkouts = recentWorkoutsRes.data || [];
 
     if (!goal) {
       return new Response(JSON.stringify({ error: "Aucun objectif trouvé. Définis d'abord un objectif sportif." }), {
@@ -54,14 +56,12 @@ Deno.serve(async (req) => {
     const today = now.toISOString().split("T")[0];
     const targetDate = goal.target_date || null;
 
-    // Compute calendar-aligned week boundaries
-    // day: 0=Sun,1=Mon,...,6=Sat → days until next Sunday
-    const dayOfWeek = now.getUTCDay(); // 0=Sun
+    const dayOfWeek = now.getUTCDay();
     const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
     const firstSunday = new Date(now);
     firstSunday.setUTCDate(firstSunday.getUTCDate() + daysUntilSunday);
     const firstSundayStr = firstSunday.toISOString().split("T")[0];
-    const isPartialFirstWeek = dayOfWeek !== 1; // not a Monday
+    const isPartialFirstWeek = dayOfWeek !== 1;
     const firstMondayAfter = new Date(firstSunday);
     firstMondayAfter.setUTCDate(firstMondayAfter.getUTCDate() + 1);
     const firstMondayAfterStr = firstMondayAfter.toISOString().split("T")[0];
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
     const prompt = buildPrompt({
       today, targetDate, weeksUntilRace, goal, profile, enriched, metrics, availDays,
-      isPartialFirstWeek, firstSundayStr, firstMondayAfterStr,
+      isPartialFirstWeek, firstSundayStr, firstMondayAfterStr, recentWorkouts,
     });
 
     // Call Lovable AI
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Tu es un coach d'endurance expert en triathlon, course à pied et vélo. Tu génères des plans d'entraînement structurés au format JSON strict. Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans commentaire." },
+          { role: "system", content: "Tu es un coach d'endurance expert en triathlon, course à pied et vélo. Tu génères des plans d'entraînement structurés au format JSON strict avec des séances détaillées et prescriptives. Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans commentaire." },
           { role: "user", content: prompt },
         ],
         temperature: 0.4,
@@ -108,10 +108,8 @@ Deno.serve(async (req) => {
 
     const aiData = await aiRes.json();
     let rawContent = aiData.choices?.[0]?.message?.content || "";
-    
-    // Strip markdown code fences if present
     rawContent = rawContent.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
-    
+
     let planData: any;
     try {
       planData = JSON.parse(rawContent);
@@ -129,7 +127,6 @@ Deno.serve(async (req) => {
 
     if (existingPlans && existingPlans.length > 0) {
       const planIds = existingPlans.map((p: any) => p.id);
-      // Get block ids
       const { data: existingBlocks } = await supabase
         .from("training_blocks")
         .select("id")
@@ -218,6 +215,7 @@ Deno.serve(async (req) => {
             scheduled_date: wo.scheduled_date || null,
             duration_target_minutes: wo.duration_target_minutes || null,
             distance_target_km: wo.distance_target_km || null,
+            distance_target_meters: wo.distance_target_meters || null,
             workout_priority: wo.workout_priority || "important",
             status: "planned",
             session_goal: wo.session_goal || null,
@@ -231,6 +229,14 @@ Deno.serve(async (req) => {
             carb_total_target_g: wo.carb_total_target_g || null,
             hydration_note: wo.hydration_note || null,
             gut_training_priority: wo.gut_training_priority || null,
+            target_summary_label: wo.target_summary_label || null,
+            primary_target_type: wo.primary_target_type || null,
+            primary_target_value_text: wo.primary_target_value_text || null,
+            secondary_target_value_text: wo.secondary_target_value_text || null,
+            warmup_summary: wo.warmup_summary || null,
+            main_set_summary: wo.main_set_summary || null,
+            cooldown_summary: wo.cooldown_summary || null,
+            workout_structure_json: wo.workout_structure_json || null,
           }));
 
           const { error: woErr } = await supabase.from("planned_workouts").insert(inserts);
@@ -260,7 +266,7 @@ Deno.serve(async (req) => {
 });
 
 function buildPrompt(ctx: any): string {
-  const { today, targetDate, weeksUntilRace, goal, profile, enriched, metrics, availDays, isPartialFirstWeek, firstSundayStr, firstMondayAfterStr } = ctx;
+  const { today, targetDate, weeksUntilRace, goal, profile, enriched, metrics, availDays, isPartialFirstWeek, firstSundayStr, firstMondayAfterStr, recentWorkouts } = ctx;
 
   const dayNames = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 
@@ -314,6 +320,21 @@ function buildPrompt(ctx: any): string {
     }
   }
 
+  // Add observed workout data for calibration
+  if (recentWorkouts && recentWorkouts.length > 0) {
+    userContext += `\nSÉANCES RÉCENTES RÉALISÉES (pour calibration):\n`;
+    for (const rw of recentWorkouts) {
+      const dur = rw.duration_seconds ? `${Math.round(rw.duration_seconds / 60)}min` : "";
+      const dist = rw.distance_meters ? `${(rw.distance_meters / 1000).toFixed(1)}km` : "";
+      const hr = rw.avg_heartrate ? `FC moy ${Math.round(rw.avg_heartrate)}` : "";
+      const pwr = rw.avg_power ? `Puissance moy ${Math.round(rw.avg_power)}W` : "";
+      const spd = rw.avg_speed ? `Vitesse moy ${rw.avg_speed.toFixed(1)}m/s` : "";
+      const parts = [rw.sport_type, dur, dist, hr, pwr, spd].filter(Boolean).join(", ");
+      userContext += `- ${rw.start_date?.split("T")[0] || "?"}: ${parts}\n`;
+    }
+    userContext += `IMPORTANT: Utilise ces données observées pour calibrer les allures, puissances et volumes des prochaines séances. Si l'athlète montre qu'il peut tenir un certain volume ou une certaine allure, ne sous-dimensionne pas les séances suivantes.\n`;
+  }
+
   if (availDays.length > 0) {
     userContext += `\nDISPONIBILITÉS:\n`;
     for (const d of availDays) {
@@ -361,6 +382,51 @@ RÈGLES DE VOLUME:
 - Les dernières semaines de développement (peak) doivent atteindre un volume réaliste pour l'objectif.
 - L'affûtage réduit le volume mais maintient l'intensité.
 
+SÉANCES PRESCRIPTIVES (OBLIGATOIRE):
+Chaque séance swim/bike/run DOIT être concrète et détaillée. Pas de séance vague ou sous-dimensionnée.
+
+Pour CHAQUE séance, tu DOIS fournir:
+- duration_target_minutes: durée totale en minutes
+- distance_target_km: distance totale en km (si pertinent, ex: course, vélo outdoor)
+- distance_target_meters: distance totale en mètres (OBLIGATOIRE pour natation)
+- target_summary_label: résumé court de la cible (ex: "3000m Z2 + 6x100m vite", "1h30 Z2 vélo", "10km allure 5:15/km")
+- primary_target_type: "pace" | "power" | "css" | "hr" | "rpe" | "zone"
+- primary_target_value_text: valeur lisible (ex: "5:15/km", "200W", "1:50/100m", "Z2")
+- secondary_target_value_text: cible secondaire optionnelle (ex: "FC <145bpm", "RPE 6-7")
+- warmup_summary: description de l'échauffement (ex: "400m crawl progressif + 4x50m éducatifs")
+- main_set_summary: description du bloc principal (ex: "6x400m à 1:55/100m, r=30s")
+- cooldown_summary: description du retour au calme (ex: "200m souple")
+- workout_structure_json: tableau JSON des blocs structurés
+
+RÈGLES PAR SPORT:
+
+NATATION:
+- distance_target_meters OBLIGATOIRE (pas seulement distance_target_km)
+- Blocs en mètres: 50, 100, 200, 300, 400m
+- Cible d'allure en min:sec/100m ou CSS
+- Pour un objectif longue distance: séances de 2500m à 4000m+ possibles
+- Ne PAS réduire la natation à une petite séance technique légère si le contexte demande du volume
+- Inclure warm-up, bloc principal, cool-down avec distances
+
+VÉLO:
+- Durée totale claire
+- Puissance cible si données disponibles (FTP, puissance moyenne observée)
+- Sinon FC ou RPE
+- Blocs structurés (ex: "3x10min à 220W, r=5min")
+
+COURSE:
+- Durée totale ET distance quand possible
+- Allure cible prioritaire (min:sec/km)
+- FC ou RPE en fallback
+- Blocs structurés (ex: "6x1km à 4:45/km, r=1min30")
+
+FORMAT workout_structure_json (tableau de blocs):
+[
+  {"phase": "warmup", "description": "400m crawl progressif", "duration_min": 8, "distance_m": 400, "target": "souple"},
+  {"phase": "main", "description": "6x400m", "duration_min": 30, "distance_m": 2400, "target": "1:55/100m", "rest": "30s"},
+  {"phase": "cooldown", "description": "200m souple", "duration_min": 5, "distance_m": 200, "target": "souple"}
+]
+
 NUTRITION PAR SÉANCE:
 Pour les sorties longues (>60min vélo, >50min course), les bricks et séances spécifiques longues:
 - Remplis carb_strategy_type: "none" | "optional_low" | "moderate" | "high" | "gut_training" | "race_strategy"
@@ -396,17 +462,26 @@ Réponds UNIQUEMENT avec ce JSON (pas de markdown):
             {
               "sport_type": "swim|bike|run|strength|mobility|rest",
               "scheduled_date": "YYYY-MM-DD",
-              "duration_target_minutes": number,
-              "distance_target_km": number|null,
+              "duration_target_minutes": "number",
+              "distance_target_km": "number|null",
+              "distance_target_meters": "number|null (OBLIGATOIRE pour natation)",
               "workout_priority": "key|important|optional",
               "session_goal": "string",
               "intensity_zone_label": "string",
+              "target_summary_label": "string (résumé court et concret)",
+              "primary_target_type": "pace|power|css|hr|rpe|zone",
+              "primary_target_value_text": "string (valeur lisible)",
+              "secondary_target_value_text": "string|null",
+              "warmup_summary": "string",
+              "main_set_summary": "string",
+              "cooldown_summary": "string",
+              "workout_structure_json": "[{phase, description, duration_min, distance_m, target, rest}]",
               "structure_text": "string (détail de la séance sur plusieurs lignes)",
               "coach_note_short": "string|null",
               "carb_strategy_type": "string|null",
-              "carb_before_g": number|null,
-              "carb_during_g_per_hour": number|null,
-              "carb_total_target_g": number|null,
+              "carb_before_g": "number|null",
+              "carb_during_g_per_hour": "number|null",
+              "carb_total_target_g": "number|null",
               "hydration_note": "string|null",
               "gut_training_priority": "string|null"
             }
@@ -427,12 +502,13 @@ function getEventVolumeGuidelines(goal: any): string {
 - Volume hebdo peak: 12-16h (minimum 10h pour un plan crédible).
 - Sortie longue vélo peak: 4h30-6h.
 - Sortie longue course peak: 2h15-3h.
-- Séance longue natation: 60-90min.
+- Séance longue natation: 60-90min, 3000-4000m.
 - Brick long (vélo+course): au moins 1 toutes les 2-3 semaines en phase spécifique.
-- Semaines normales de développement: 8-14h selon la phase.
+- Semaines normales de développement: 8-14h.
 - Semaines de récupération: 5-9h (pas en dessous de 5h).
 - Première semaine du plan: partir du volume actuel de l'athlète ou 5-7h si inconnu.
-- 5-7 séances/semaine en phase de développement, 4-6 en récupération.`;
+- 5-7 séances/semaine en phase de développement, 4-6 en récupération.
+- Natation: séances de 2500m à 4000m en développement, pas seulement 1000m technique.`;
   }
 
   if (format.includes("half") || format.includes("70.3") || format.includes("mi")) {
@@ -440,11 +516,12 @@ function getEventVolumeGuidelines(goal: any): string {
 - Volume hebdo peak: 8-12h.
 - Sortie longue vélo peak: 3h-4h30.
 - Sortie longue course peak: 1h30-2h15.
-- Séance longue natation: 50-75min.
+- Séance longue natation: 50-75min, 2500-3500m.
 - Semaines normales de développement: 6-10h.
 - Semaines de récupération: 4-6h.
 - Première semaine: partir du volume actuel ou 4-6h si inconnu.
-- 5-6 séances/semaine en développement.`;
+- 5-6 séances/semaine en développement.
+- Natation: séances de 2000m à 3500m, pas seulement technique légère.`;
   }
 
   if (format.includes("olympic") || format.includes("m") || format.includes("cd") || format.includes("distance olympique")) {
@@ -452,7 +529,7 @@ function getEventVolumeGuidelines(goal: any): string {
 - Volume hebdo peak: 6-9h.
 - Sortie longue vélo peak: 2h-3h.
 - Sortie longue course peak: 1h15-1h45.
-- Séance longue natation: 45-60min.
+- Séance longue natation: 45-60min, 2000-3000m.
 - Semaines normales: 5-8h.
 - Semaines de récupération: 3-5h.
 - 4-6 séances/semaine.`;
@@ -463,6 +540,7 @@ function getEventVolumeGuidelines(goal: any): string {
 - Volume hebdo peak: 4-7h.
 - Sortie longue vélo peak: 1h30-2h30.
 - Sortie longue course peak: 50min-1h15.
+- Séance natation: 1500-2500m.
 - Semaines normales: 3-6h.
 - Semaines de récupération: 2-4h.
 - 4-5 séances/semaine.`;

@@ -446,23 +446,32 @@ export type Database = {
           carb_strategy_type: string | null
           carb_total_target_g: number | null
           coach_note_short: string | null
+          cooldown_summary: string | null
           created_at: string
           created_by_type: string | null
           distance_target_km: number | null
+          distance_target_meters: number | null
           duration_target_minutes: number | null
           gut_training_priority: string | null
           hydration_note: string | null
           id: string
           intensity_zone_label: string | null
+          main_set_summary: string | null
+          primary_target_type: string | null
+          primary_target_value_text: string | null
           scheduled_date: string | null
+          secondary_target_value_text: string | null
           session_goal: string | null
           sport_type: string
           status: string
           structure_text: string | null
+          target_summary_label: string | null
           updated_at: string
           user_id: string
+          warmup_summary: string | null
           week_id: string
           workout_priority: string
+          workout_structure_json: Json | null
         }
         Insert: {
           carb_before_g?: number | null
@@ -470,23 +479,32 @@ export type Database = {
           carb_strategy_type?: string | null
           carb_total_target_g?: number | null
           coach_note_short?: string | null
+          cooldown_summary?: string | null
           created_at?: string
           created_by_type?: string | null
           distance_target_km?: number | null
+          distance_target_meters?: number | null
           duration_target_minutes?: number | null
           gut_training_priority?: string | null
           hydration_note?: string | null
           id?: string
           intensity_zone_label?: string | null
+          main_set_summary?: string | null
+          primary_target_type?: string | null
+          primary_target_value_text?: string | null
           scheduled_date?: string | null
+          secondary_target_value_text?: string | null
           session_goal?: string | null
           sport_type: string
           status?: string
           structure_text?: string | null
+          target_summary_label?: string | null
           updated_at?: string
           user_id: string
+          warmup_summary?: string | null
           week_id: string
           workout_priority?: string
+          workout_structure_json?: Json | null
         }
         Update: {
           carb_before_g?: number | null
@@ -494,23 +512,32 @@ export type Database = {
           carb_strategy_type?: string | null
           carb_total_target_g?: number | null
           coach_note_short?: string | null
+          cooldown_summary?: string | null
           created_at?: string
           created_by_type?: string | null
           distance_target_km?: number | null
+          distance_target_meters?: number | null
           duration_target_minutes?: number | null
           gut_training_priority?: string | null
           hydration_note?: string | null
           id?: string
           intensity_zone_label?: string | null
+          main_set_summary?: string | null
+          primary_target_type?: string | null
+          primary_target_value_text?: string | null
           scheduled_date?: string | null
+          secondary_target_value_text?: string | null
           session_goal?: string | null
           sport_type?: string
           status?: string
           structure_text?: string | null
+          target_summary_label?: string | null
           updated_at?: string
           user_id?: string
+          warmup_summary?: string | null
           week_id?: string
           workout_priority?: string
+          workout_structure_json?: Json | null
         }
         Relationships: [
           {
