@@ -48,6 +48,9 @@ const App = () => (
             <Route path="/onboarding/enriched/summary" element={<ProtectedRoute><EnrichedSummaryPage /></ProtectedRoute>} />
             <Route path="/plan" element={<ProtectedRoute><PlanPage /></ProtectedRoute>} />
             <Route path="/plan/week/:weekId" element={<ProtectedRoute><WeekPage /></ProtectedRoute>} />
+            <Route path="/plan/week/:weekId/adjust" element={<ProtectedRoute><WeekConstraintsPage /></ProtectedRoute>} />
+            <Route path="/plan/week/:weekId/proposal/:proposalId" element={<ProtectedRoute><WeekProposalPage /></ProtectedRoute>} />
+            <Route path="/plan/week/:weekId/history" element={<ProtectedRoute><AdjustmentHistoryPage /></ProtectedRoute>} />
             <Route path="/plan/workout/:workoutId" element={<ProtectedRoute><WorkoutDetailPage /></ProtectedRoute>} />
             <Route path="/strava" element={<ProtectedRoute><StravaPage /></ProtectedRoute>} />
             <Route path="/activities" element={<ProtectedRoute><ActivitiesPage /></ProtectedRoute>} />
