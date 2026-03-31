@@ -120,6 +120,15 @@ export default function WeekPage() {
             <p className="text-sm text-muted-foreground">{fmtDate(week.start_date)} → {fmtDate(week.end_date)}</p>
           )}
           {week.notes && <p className="text-sm text-muted-foreground">{week.notes}</p>}
+
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button size="sm" onClick={() => navigate(`/plan/week/${weekId}/adjust`)} className="gap-2">
+              <Pencil className="h-3.5 w-3.5" /> Modifier ma semaine
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navigate(`/plan/week/${weekId}/history`)} className="gap-2">
+              <Clock className="h-3.5 w-3.5" /> Historique
+            </Button>
+          </div>
         </div>
 
         {/* Workouts */}
