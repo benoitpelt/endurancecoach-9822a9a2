@@ -21,6 +21,9 @@ import WorkoutDetailPage from "@/pages/WorkoutDetailPage";
 import StravaPage from "@/pages/StravaPage";
 import ActivitiesPage from "@/pages/ActivitiesPage";
 import CompletedWorkoutDetailPage from "@/pages/CompletedWorkoutDetailPage";
+import WeekConstraintsPage from "@/pages/WeekConstraintsPage";
+import WeekProposalPage from "@/pages/WeekProposalPage";
+import AdjustmentHistoryPage from "@/pages/AdjustmentHistoryPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
