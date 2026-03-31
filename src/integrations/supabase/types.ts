@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      adjustment_impacted_workouts: {
+        Row: {
+          adjustment_id: string
+          change_type: string
+          created_at: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          user_id: string
+          workout_id: string
+        }
+        Insert: {
+          adjustment_id: string
+          change_type: string
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          user_id: string
+          workout_id: string
+        }
+        Update: {
+          adjustment_id?: string
+          change_type?: string
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          user_id?: string
+          workout_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adjustment_impacted_workouts_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "plan_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adjustment_impacted_workouts_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "planned_workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athlete_enriched_profiles: {
         Row: {
           created_at: string
@@ -439,6 +487,125 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_adjustments: {
+        Row: {
+          adjustment_type: string
+          applied_at: string
+          constraint_id: string | null
+          created_at: string
+          detailed_summary: string | null
+          id: string
+          plan_id: string
+          proposal_id: string | null
+          reason_summary: string | null
+          user_id: string
+          week_id: string
+        }
+        Insert: {
+          adjustment_type?: string
+          applied_at?: string
+          constraint_id?: string | null
+          created_at?: string
+          detailed_summary?: string | null
+          id?: string
+          plan_id: string
+          proposal_id?: string | null
+          reason_summary?: string | null
+          user_id: string
+          week_id: string
+        }
+        Update: {
+          adjustment_type?: string
+          applied_at?: string
+          constraint_id?: string | null
+          created_at?: string
+          detailed_summary?: string | null
+          id?: string
+          plan_id?: string
+          proposal_id?: string | null
+          reason_summary?: string | null
+          user_id?: string
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_adjustments_constraint_id_fkey"
+            columns: ["constraint_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_constraints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_adjustments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_adjustments_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_adjustment_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_adjustments_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planned_workout_versions: {
+        Row: {
+          adjustment_id: string | null
+          change_reason: string | null
+          created_at: string
+          id: string
+          snapshot: Json
+          user_id: string
+          version_number: number
+          workout_id: string
+        }
+        Insert: {
+          adjustment_id?: string | null
+          change_reason?: string | null
+          created_at?: string
+          id?: string
+          snapshot: Json
+          user_id: string
+          version_number?: number
+          workout_id: string
+        }
+        Update: {
+          adjustment_id?: string | null
+          change_reason?: string | null
+          created_at?: string
+          id?: string
+          snapshot?: Json
+          user_id?: string
+          version_number?: number
+          workout_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planned_workout_versions_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "plan_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planned_workout_versions_workout_id_fkey"
+            columns: ["workout_id"]
+            isOneToOne: false
+            referencedRelation: "planned_workouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planned_workouts: {
         Row: {
           carb_before_g: number | null
@@ -782,6 +949,128 @@ export type Database = {
             columns: ["block_id"]
             isOneToOne: false
             referencedRelation: "training_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_adjustment_proposals: {
+        Row: {
+          changes_summary: string | null
+          constraint_id: string | null
+          created_at: string
+          detailed_explanation: string | null
+          id: string
+          original_workouts: Json
+          proposed_workouts: Json
+          protected_workouts: Json | null
+          sacrificed_workouts: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+          week_id: string
+        }
+        Insert: {
+          changes_summary?: string | null
+          constraint_id?: string | null
+          created_at?: string
+          detailed_explanation?: string | null
+          id?: string
+          original_workouts?: Json
+          proposed_workouts?: Json
+          protected_workouts?: Json | null
+          sacrificed_workouts?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          week_id: string
+        }
+        Update: {
+          changes_summary?: string | null
+          constraint_id?: string | null
+          created_at?: string
+          detailed_explanation?: string | null
+          id?: string
+          original_workouts?: Json
+          proposed_workouts?: Json
+          protected_workouts?: Json | null
+          sacrificed_workouts?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_adjustment_proposals_constraint_id_fkey"
+            columns: ["constraint_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_constraints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_adjustment_proposals_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_constraints: {
+        Row: {
+          created_at: string
+          explicit_requests: Json | null
+          free_text: string | null
+          id: string
+          life_load: number | null
+          max_duration_per_day: Json | null
+          perceived_fatigue: number | null
+          sport_preferences_per_day: Json | null
+          status: string
+          unavailable_days: Json | null
+          updated_at: string
+          user_id: string
+          week_id: string
+          weekend_constraint: string | null
+        }
+        Insert: {
+          created_at?: string
+          explicit_requests?: Json | null
+          free_text?: string | null
+          id?: string
+          life_load?: number | null
+          max_duration_per_day?: Json | null
+          perceived_fatigue?: number | null
+          sport_preferences_per_day?: Json | null
+          status?: string
+          unavailable_days?: Json | null
+          updated_at?: string
+          user_id: string
+          week_id: string
+          weekend_constraint?: string | null
+        }
+        Update: {
+          created_at?: string
+          explicit_requests?: Json | null
+          free_text?: string | null
+          id?: string
+          life_load?: number | null
+          max_duration_per_day?: Json | null
+          perceived_fatigue?: number | null
+          sport_preferences_per_day?: Json | null
+          status?: string
+          unavailable_days?: Json | null
+          updated_at?: string
+          user_id?: string
+          week_id?: string
+          weekend_constraint?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_constraints_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "training_weeks"
             referencedColumns: ["id"]
           },
         ]
