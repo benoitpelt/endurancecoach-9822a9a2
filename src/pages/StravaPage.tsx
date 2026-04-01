@@ -84,6 +84,7 @@ export default function StravaPage() {
   const [importResult, setImportResult] = useState<{ count: number; total: number; fallback: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [recalibrating, setRecalibrating] = useState(false);
 
   const getToken = async () => {
     const { data } = await supabase.auth.getSession();
@@ -243,6 +244,25 @@ export default function StravaPage() {
   const viewSynthesis = async () => {
     const token = await getToken();
     if (token) await loadSynthesis(token);
+  };
+
+  const recalibrateWorkouts = async () => {
+    try {
+      setRecalibrating(true);
+      const token = await getToken();
+      if (!token) throw new Error("Session expirée.");
+      const res = await supabase.functions.invoke("recalibrate-workouts", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.error) throw res.error;
+      if (res.data?.error) throw new Error(res.data.error);
+      toast.success(`${res.data.recalibrated_count} séance(s) recalibrée(s) avec succès !`);
+      navigate("/plan");
+    } catch (e: any) {
+      toast.error(e.message || "Erreur lors du recalibrage.");
+    } finally {
+      setRecalibrating(false);
+    }
   };
 
   const regeneratePlan = async () => {
@@ -536,27 +556,49 @@ export default function StravaPage() {
               <div className="bg-card rounded-xl shadow-card p-6 space-y-4">
                 <h2 className="text-lg font-heading font-bold">Que faire de ton plan ?</h2>
                 <p className="text-sm text-muted-foreground">
-                  Ton profil a été enrichi avec les données Strava. Tu disposes maintenant d'une base plus fiable pour ton plan d'entraînement.
+                  Ton profil a été enrichi avec les données Strava. Tu disposes maintenant d'une base plus fiable pour ajuster tes prochaines séances.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button variant="outline" onClick={() => navigate("/plan")} className="gap-2">
-                    <ChevronRight className="h-4 w-4" />
-                    Garder mon plan actuel
-                  </Button>
-                  <Button
-                    onClick={regeneratePlan}
-                    disabled={regenerating}
-                    className="gap-2"
-                  >
-                    {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    {regenerating ? "Régénération en cours…" : "Régénérer mon plan avec Strava"}
-                  </Button>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button variant="outline" onClick={() => navigate("/plan")} className="gap-2">
+                      <ChevronRight className="h-4 w-4" />
+                      Garder mon plan actuel
+                    </Button>
+                    <Button
+                      onClick={recalibrateWorkouts}
+                      disabled={recalibrating || regenerating}
+                      className="gap-2"
+                    >
+                      {recalibrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      {recalibrating ? "Recalibrage en cours…" : "Recalibrer mes prochaines séances"}
+                    </Button>
+                  </div>
+                  {recalibrating && (
+                    <p className="text-xs text-muted-foreground animate-pulse">
+                      Le coach ajuste tes prochaines séances avec les nouvelles données Strava…
+                    </p>
+                  )}
+                  <div className="border-t border-border pt-3 mt-1">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Le recalibrage ajuste le contenu de tes séances futures (allures, distances, volumes) sans modifier la structure de ton plan.
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={regeneratePlan}
+                      disabled={regenerating || recalibrating}
+                      className="gap-2 text-xs text-muted-foreground"
+                    >
+                      {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                      {regenerating ? "Régénération complète…" : "Régénérer complètement mon plan (action lourde)"}
+                    </Button>
+                    {regenerating && (
+                      <p className="text-xs text-destructive/70 animate-pulse mt-1">
+                        Attention : cette action reconstruit entièrement ton plan. Les blocs et semaines seront recréés.
+                      </p>
+                    )}
+                  </div>
                 </div>
-                {regenerating && (
-                  <p className="text-xs text-muted-foreground animate-pulse">
-                    Le coach reconstruit ton plan avec les nouvelles données…
-                  </p>
-                )}
               </div>
             )}
 
