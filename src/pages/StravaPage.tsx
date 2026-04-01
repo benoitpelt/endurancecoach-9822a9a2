@@ -84,6 +84,7 @@ export default function StravaPage() {
   const [importResult, setImportResult] = useState<{ count: number; total: number; fallback: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [recalibrating, setRecalibrating] = useState(false);
 
   const getToken = async () => {
     const { data } = await supabase.auth.getSession();
