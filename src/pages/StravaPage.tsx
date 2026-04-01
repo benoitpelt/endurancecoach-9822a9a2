@@ -246,6 +246,25 @@ export default function StravaPage() {
     if (token) await loadSynthesis(token);
   };
 
+  const recalibrateWorkouts = async () => {
+    try {
+      setRecalibrating(true);
+      const token = await getToken();
+      if (!token) throw new Error("Session expirée.");
+      const res = await supabase.functions.invoke("recalibrate-workouts", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.error) throw res.error;
+      if (res.data?.error) throw new Error(res.data.error);
+      toast.success(`${res.data.recalibrated_count} séance(s) recalibrée(s) avec succès !`);
+      navigate("/plan");
+    } catch (e: any) {
+      toast.error(e.message || "Erreur lors du recalibrage.");
+    } finally {
+      setRecalibrating(false);
+    }
+  };
+
   const regeneratePlan = async () => {
     try {
       setRegenerating(true);
