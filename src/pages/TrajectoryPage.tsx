@@ -87,7 +87,12 @@ export default function TrajectoryPage() {
       if (res.error) throw new Error(typeof res.error === "object" && "message" in res.error ? (res.error as any).message : String(res.error));
       if (res.data?.error) throw new Error(res.data.error);
 
-      toast.success("Trajectoire mise à jour !");
+      const traj = res.data?.trajectory;
+      if (traj?.trajectory_status === "insufficient_data") {
+        toast.info(traj.summary_short || "Pas encore assez de données pour calculer ta trajectoire.");
+      } else {
+        toast.success("Trajectoire mise à jour !");
+      }
       await loadData();
     } catch (e: any) {
       toast.error(e.message || "Erreur lors du calcul");
