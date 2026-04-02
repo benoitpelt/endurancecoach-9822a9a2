@@ -55,6 +55,27 @@ export default function TrajectoryWidget({ trajectory, daysRemaining, loading }:
     );
   }
 
+  // Handle insufficient_data or unknown status gracefully
+  if (trajectory.trajectory_status === "insufficient_data" || trajectory.realism_score_percent == null) {
+    return (
+      <button
+        onClick={() => navigate("/trajectory")}
+        className="w-full bg-card rounded-xl shadow-card p-5 text-left hover:shadow-elevated transition-shadow"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" />
+            <span className="font-heading font-semibold">Trajectoire objectif</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <p className="text-sm text-muted-foreground mt-2">
+          {trajectory.summary_short || "Pas encore assez de données pour évaluer ta trajectoire."}
+        </p>
+      </button>
+    );
+  }
+
   const config = STATUS_CONFIG[trajectory.trajectory_status] || STATUS_CONFIG.watch;
   const StatusIcon = config.icon;
 
