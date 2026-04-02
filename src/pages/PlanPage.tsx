@@ -96,6 +96,9 @@ export default function PlanPage() {
   const [goal, setGoal] = useState<any>(null);
   const [generationNotes, setGenerationNotes] = useState<string | null>(null);
   const [profileComplete, setProfileComplete] = useState(true);
+  const [trajectoryData, setTrajectoryData] = useState<any>(null);
+  const [trajectoryLoading, setTrajectoryLoading] = useState(false);
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
