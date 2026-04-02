@@ -412,6 +412,60 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_trajectory_snapshots: {
+        Row: {
+          created_at: string
+          discipline_breakdown: Json | null
+          goal_id: string
+          id: string
+          plan_id: string | null
+          raw_input: Json | null
+          realism_score_percent: number
+          suggests_plan_review: boolean | null
+          summary_detailed: string | null
+          summary_short: string | null
+          supporting_points: Json | null
+          trajectory_status: string
+          trigger_event: string | null
+          user_id: string
+          weakening_points: Json | null
+        }
+        Insert: {
+          created_at?: string
+          discipline_breakdown?: Json | null
+          goal_id: string
+          id?: string
+          plan_id?: string | null
+          raw_input?: Json | null
+          realism_score_percent?: number
+          suggests_plan_review?: boolean | null
+          summary_detailed?: string | null
+          summary_short?: string | null
+          supporting_points?: Json | null
+          trajectory_status?: string
+          trigger_event?: string | null
+          user_id: string
+          weakening_points?: Json | null
+        }
+        Update: {
+          created_at?: string
+          discipline_breakdown?: Json | null
+          goal_id?: string
+          id?: string
+          plan_id?: string | null
+          raw_input?: Json | null
+          realism_score_percent?: number
+          suggests_plan_review?: boolean | null
+          summary_detailed?: string | null
+          summary_short?: string | null
+          supporting_points?: Json | null
+          trajectory_status?: string
+          trigger_event?: string | null
+          user_id?: string
+          weakening_points?: Json | null
+        }
+        Relationships: []
+      }
       imported_activities: {
         Row: {
           avg_heartrate: number | null
