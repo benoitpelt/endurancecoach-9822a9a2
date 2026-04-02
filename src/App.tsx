@@ -24,6 +24,7 @@ import CompletedWorkoutDetailPage from "@/pages/CompletedWorkoutDetailPage";
 import WeekConstraintsPage from "@/pages/WeekConstraintsPage";
 import WeekProposalPage from "@/pages/WeekProposalPage";
 import AdjustmentHistoryPage from "@/pages/AdjustmentHistoryPage";
+import TrajectoryPage from "@/pages/TrajectoryPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
