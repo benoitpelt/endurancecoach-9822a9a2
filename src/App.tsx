@@ -56,6 +56,7 @@ const App = () => (
             <Route path="/strava" element={<ProtectedRoute><StravaPage /></ProtectedRoute>} />
             <Route path="/activities" element={<ProtectedRoute><ActivitiesPage /></ProtectedRoute>} />
             <Route path="/activities/:id" element={<ProtectedRoute><CompletedWorkoutDetailPage /></ProtectedRoute>} />
+            <Route path="/trajectory" element={<ProtectedRoute><TrajectoryPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
