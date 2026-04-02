@@ -24,6 +24,7 @@ import CompletedWorkoutDetailPage from "@/pages/CompletedWorkoutDetailPage";
 import WeekConstraintsPage from "@/pages/WeekConstraintsPage";
 import WeekProposalPage from "@/pages/WeekProposalPage";
 import AdjustmentHistoryPage from "@/pages/AdjustmentHistoryPage";
+import TrajectoryPage from "@/pages/TrajectoryPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/strava" element={<ProtectedRoute><StravaPage /></ProtectedRoute>} />
             <Route path="/activities" element={<ProtectedRoute><ActivitiesPage /></ProtectedRoute>} />
             <Route path="/activities/:id" element={<ProtectedRoute><CompletedWorkoutDetailPage /></ProtectedRoute>} />
+            <Route path="/trajectory" element={<ProtectedRoute><TrajectoryPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

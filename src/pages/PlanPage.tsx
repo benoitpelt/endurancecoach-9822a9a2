@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import TrajectoryWidget from "@/components/TrajectoryWidget";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,12 +96,50 @@ export default function PlanPage() {
   const [goal, setGoal] = useState<any>(null);
   const [generationNotes, setGenerationNotes] = useState<string | null>(null);
   const [profileComplete, setProfileComplete] = useState(true);
+  const [trajectoryData, setTrajectoryData] = useState<any>(null);
+  const [trajectoryLoading, setTrajectoryLoading] = useState(false);
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
     loadPlan();
     checkProfileCompleteness();
+    loadTrajectory();
   }, [user]);
+
+  const loadTrajectory = async () => {
+    if (!user) return;
+    setTrajectoryLoading(true);
+    try {
+      const { data: goalData } = await supabase
+        .from("race_goals")
+        .select("id, target_date")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (goalData?.target_date) {
+        setDaysRemaining(Math.ceil((new Date(goalData.target_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+      }
+
+      if (goalData) {
+        const { data: snapshot } = await supabase
+          .from("goal_trajectory_snapshots")
+          .select("trajectory_status, realism_score_percent, summary_short, supporting_points, weakening_points, suggests_plan_review")
+          .eq("user_id", user.id)
+          .eq("goal_id", goalData.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        setTrajectoryData(snapshot);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTrajectoryLoading(false);
+    }
+  };
 
   const checkProfileCompleteness = async () => {
     const [{ data: prof }, { data: goalData }, { data: enriched }] = await Promise.all([
@@ -369,6 +408,9 @@ export default function PlanPage() {
             </div>
           )}
         </div>
+
+        {/* Trajectory widget */}
+        <TrajectoryWidget trajectory={trajectoryData} daysRemaining={daysRemaining} loading={trajectoryLoading} />
 
         {/* Generation notes */}
         {generationNotes && (
