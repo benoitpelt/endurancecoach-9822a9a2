@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, User, Target, Calendar, LogOut, Pencil, Layers } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, User, Target, Calendar, LogOut, Pencil, Layers, CheckCircle2 } from "lucide-react";
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const SEX_LABELS: Record<string, string> = { male: "Homme", female: "Femme", other: "Autre", prefer_not_to_say: "Non précisé" };
@@ -16,6 +17,7 @@ export default function SummaryPage() {
   const [profile, setProfile] = useState<any>(null);
   const [goal, setGoal] = useState<any>(null);
   const [availability, setAvailability] = useState<any[]>([]);
+  const [enrichedScore, setEnrichedScore] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -23,10 +25,27 @@ export default function SummaryPage() {
       supabase.from("athlete_profiles").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("race_goals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       supabase.from("default_availability_rules").select("*").eq("user_id", user.id).order("day_of_week"),
-    ]).then(([p, g, a]) => {
+      supabase.from("athlete_enriched_profiles").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("athlete_metric_history").select("*").eq("user_id", user.id).order("observed_at", { ascending: false }),
+    ]).then(([p, g, a, e, m]) => {
       setProfile(p.data);
       setGoal(g.data);
       setAvailability(a.data || []);
+
+      // Compute enriched profile completeness
+      const enriched = e.data;
+      if (enriched) {
+        const metricsMap: Record<string, any> = {};
+        (m.data || []).forEach((row: any) => {
+          if (!metricsMap[row.metric_type]) metricsMap[row.metric_type] = row;
+        });
+        const items = computeEnrichedCompleteness(enriched, metricsMap);
+        const filled = items.filter((i) => i.filled).length;
+        setEnrichedScore(Math.round((filled / items.length) * 100));
+      } else {
+        setEnrichedScore(0);
+      }
+
       setLoading(false);
     });
   }, [user]);
@@ -128,13 +147,31 @@ export default function SummaryPage() {
           </Button>
         </div>
 
-        <div className="bg-gradient-subtle rounded-xl p-6 text-center space-y-3">
-          <p className="font-heading font-semibold">Affiner mon profil</p>
+        <div className="bg-gradient-subtle rounded-xl p-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="font-heading font-semibold">Affiner mon profil</p>
+            {enrichedScore !== null && (
+              <span className={`text-lg font-bold ${enrichedScore >= 70 ? "text-accent" : enrichedScore >= 40 ? "text-primary" : "text-warning"}`}>
+                {enrichedScore}%
+              </span>
+            )}
+          </div>
+          {enrichedScore !== null && (
+            <Progress value={enrichedScore} className="h-2" />
+          )}
           <p className="text-sm text-muted-foreground">
-            Complète ton profil détaillé pour obtenir un plan encore plus personnalisé.
+            {enrichedScore === null || enrichedScore === 0
+              ? "Complète ton profil détaillé pour obtenir un plan encore plus personnalisé."
+              : enrichedScore < 40
+              ? "Ton profil est encore très partiel — quelques minutes suffisent à l'améliorer."
+              : enrichedScore < 70
+              ? "Bon début ! Quelques infos supplémentaires rendraient le plan encore meilleur."
+              : enrichedScore < 90
+              ? "Profil bien renseigné. Plus que quelques détails pour un plan optimal."
+              : "Profil très complet ! 🎉 Tu peux toujours l'ajuster si besoin."}
           </p>
-          <Button onClick={() => navigate("/onboarding/enriched")} className="mt-2">
-            Affiner mon profil
+          <Button onClick={() => navigate("/onboarding/enriched")} variant={enrichedScore !== null && enrichedScore >= 90 ? "outline" : "default"} className="mt-2">
+            {enrichedScore !== null && enrichedScore >= 90 ? "Revoir mon profil" : "Affiner mon profil"}
           </Button>
         </div>
       </div>
@@ -166,4 +203,29 @@ function Field({ label, value }: { label: string; value: string | null | undefin
       <span>{value || "—"}</span>
     </>
   );
+}
+
+const METRIC_TYPES = ["hr_max", "hr_rest", "ftp", "threshold_pace_run", "css", "pace_100m_max", "pace_100m_easy", "weight"];
+
+function computeEnrichedCompleteness(enriched: any, metrics: Record<string, any>) {
+  const items: { label: string; filled: boolean }[] = [
+    { label: "Expérience sportive", filled: Object.keys(enriched.sport_experience || {}).length > 0 },
+    { label: "Fréquence d'entraînement", filled: !!enriched.current_frequency_per_week },
+    { label: "Discipline la plus forte", filled: !!enriched.strongest_discipline },
+    { label: "Discipline la plus faible", filled: !!enriched.weakest_discipline },
+    { label: "Volume hebdomadaire", filled: Object.values(enriched.weekly_volume_hours || {}).some((v: any) => v) },
+    { label: "Séances par semaine", filled: !!enriched.sessions_per_week },
+    { label: "Plus longue natation récente", filled: !!enriched.longest_recent_swim },
+    { label: "Plus long vélo récent", filled: !!enriched.longest_recent_bike },
+    { label: "Plus longue course récente", filled: !!enriched.longest_recent_run },
+    { label: "Performances triathlon", filled: Object.values((enriched.performances as any)?.triathlon || {}).some((v: any) => v) },
+    { label: "Performances course", filled: Object.values((enriched.performances as any)?.running || {}).some((v: any) => v) },
+    { label: "Performances vélo", filled: Object.values((enriched.performances as any)?.cycling || {}).some((v: any) => v) },
+    { label: "Performances natation", filled: Object.values((enriched.performances as any)?.swimming || {}).some((v: any) => v) },
+    ...METRIC_TYPES.map((t) => ({ label: t, filled: !!metrics[t] })),
+    { label: "Contraintes / limites", filled: !!enriched.injuries_constraints },
+    { label: "Max séances/sem", filled: !!enriched.max_sessions_per_week },
+    { label: "Ce qui fait rater le plan", filled: !!enriched.plan_failure_reason },
+  ];
+  return items;
 }
