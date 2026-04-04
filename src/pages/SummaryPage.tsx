@@ -25,10 +25,27 @@ export default function SummaryPage() {
       supabase.from("athlete_profiles").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("race_goals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       supabase.from("default_availability_rules").select("*").eq("user_id", user.id).order("day_of_week"),
-    ]).then(([p, g, a]) => {
+      supabase.from("athlete_enriched_profiles").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("athlete_metric_history").select("*").eq("user_id", user.id).order("observed_at", { ascending: false }),
+    ]).then(([p, g, a, e, m]) => {
       setProfile(p.data);
       setGoal(g.data);
       setAvailability(a.data || []);
+
+      // Compute enriched profile completeness
+      const enriched = e.data;
+      if (enriched) {
+        const metricsMap: Record<string, any> = {};
+        (m.data || []).forEach((row: any) => {
+          if (!metricsMap[row.metric_type]) metricsMap[row.metric_type] = row;
+        });
+        const items = computeEnrichedCompleteness(enriched, metricsMap);
+        const filled = items.filter((i) => i.filled).length;
+        setEnrichedScore(Math.round((filled / items.length) * 100));
+      } else {
+        setEnrichedScore(0);
+      }
+
       setLoading(false);
     });
   }, [user]);
