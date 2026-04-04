@@ -147,13 +147,31 @@ export default function SummaryPage() {
           </Button>
         </div>
 
-        <div className="bg-gradient-subtle rounded-xl p-6 text-center space-y-3">
-          <p className="font-heading font-semibold">Affiner mon profil</p>
+        <div className="bg-gradient-subtle rounded-xl p-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="font-heading font-semibold">Affiner mon profil</p>
+            {enrichedScore !== null && (
+              <span className={`text-lg font-bold ${enrichedScore >= 70 ? "text-accent" : enrichedScore >= 40 ? "text-primary" : "text-warning"}`}>
+                {enrichedScore}%
+              </span>
+            )}
+          </div>
+          {enrichedScore !== null && (
+            <Progress value={enrichedScore} className="h-2" />
+          )}
           <p className="text-sm text-muted-foreground">
-            Complète ton profil détaillé pour obtenir un plan encore plus personnalisé.
+            {enrichedScore === null || enrichedScore === 0
+              ? "Complète ton profil détaillé pour obtenir un plan encore plus personnalisé."
+              : enrichedScore < 40
+              ? "Ton profil est encore très partiel — quelques minutes suffisent à l'améliorer."
+              : enrichedScore < 70
+              ? "Bon début ! Quelques infos supplémentaires rendraient le plan encore meilleur."
+              : enrichedScore < 90
+              ? "Profil bien renseigné. Plus que quelques détails pour un plan optimal."
+              : "Profil très complet ! 🎉 Tu peux toujours l'ajuster si besoin."}
           </p>
-          <Button onClick={() => navigate("/onboarding/enriched")} className="mt-2">
-            Affiner mon profil
+          <Button onClick={() => navigate("/onboarding/enriched")} variant={enrichedScore !== null && enrichedScore >= 90 ? "outline" : "default"} className="mt-2">
+            {enrichedScore !== null && enrichedScore >= 90 ? "Revoir mon profil" : "Affiner mon profil"}
           </Button>
         </div>
       </div>
