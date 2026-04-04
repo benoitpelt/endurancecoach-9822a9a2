@@ -17,6 +17,7 @@ export default function SummaryPage() {
   const [profile, setProfile] = useState<any>(null);
   const [goal, setGoal] = useState<any>(null);
   const [availability, setAvailability] = useState<any[]>([]);
+  const [enrichedScore, setEnrichedScore] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
