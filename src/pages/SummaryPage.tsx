@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, User, Target, Calendar, LogOut, Pencil, Layers } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, User, Target, Calendar, LogOut, Pencil, Layers, CheckCircle2 } from "lucide-react";
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const SEX_LABELS: Record<string, string> = { male: "Homme", female: "Femme", other: "Autre", prefer_not_to_say: "Non précisé" };
