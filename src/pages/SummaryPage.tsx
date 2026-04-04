@@ -204,3 +204,28 @@ function Field({ label, value }: { label: string; value: string | null | undefin
     </>
   );
 }
+
+const METRIC_TYPES = ["hr_max", "hr_rest", "ftp", "threshold_pace_run", "css", "pace_100m_max", "pace_100m_easy", "weight"];
+
+function computeEnrichedCompleteness(enriched: any, metrics: Record<string, any>) {
+  const items: { label: string; filled: boolean }[] = [
+    { label: "Expérience sportive", filled: Object.keys(enriched.sport_experience || {}).length > 0 },
+    { label: "Fréquence d'entraînement", filled: !!enriched.current_frequency_per_week },
+    { label: "Discipline la plus forte", filled: !!enriched.strongest_discipline },
+    { label: "Discipline la plus faible", filled: !!enriched.weakest_discipline },
+    { label: "Volume hebdomadaire", filled: Object.values(enriched.weekly_volume_hours || {}).some((v: any) => v) },
+    { label: "Séances par semaine", filled: !!enriched.sessions_per_week },
+    { label: "Plus longue natation récente", filled: !!enriched.longest_recent_swim },
+    { label: "Plus long vélo récent", filled: !!enriched.longest_recent_bike },
+    { label: "Plus longue course récente", filled: !!enriched.longest_recent_run },
+    { label: "Performances triathlon", filled: Object.values((enriched.performances as any)?.triathlon || {}).some((v: any) => v) },
+    { label: "Performances course", filled: Object.values((enriched.performances as any)?.running || {}).some((v: any) => v) },
+    { label: "Performances vélo", filled: Object.values((enriched.performances as any)?.cycling || {}).some((v: any) => v) },
+    { label: "Performances natation", filled: Object.values((enriched.performances as any)?.swimming || {}).some((v: any) => v) },
+    ...METRIC_TYPES.map((t) => ({ label: t, filled: !!metrics[t] })),
+    { label: "Contraintes / limites", filled: !!enriched.injuries_constraints },
+    { label: "Max séances/sem", filled: !!enriched.max_sessions_per_week },
+    { label: "Ce qui fait rater le plan", filled: !!enriched.plan_failure_reason },
+  ];
+  return items;
+}
