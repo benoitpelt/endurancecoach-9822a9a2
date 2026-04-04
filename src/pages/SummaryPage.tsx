@@ -4,10 +4,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, User, Target, Calendar, LogOut, Pencil, Layers, CheckCircle2 } from "lucide-react";
+import {
+  Loader2, User, Target, Calendar, LogOut, Pencil, Layers,
+  ChevronRight, Activity, ArrowRight,
+} from "lucide-react";
 
-const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-const SEX_LABELS: Record<string, string> = { male: "Homme", female: "Femme", other: "Autre", prefer_not_to_say: "Non précisé" };
+const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+const SEX_LABELS: Record<string, string> = { male: "H", female: "F", other: "Autre", prefer_not_to_say: "—" };
 const GOAL_TYPE_LABELS: Record<string, string> = { triathlon: "Triathlon", running: "Course à pied", cycling: "Vélo" };
 
 export default function SummaryPage() {
@@ -32,7 +35,6 @@ export default function SummaryPage() {
       setGoal(g.data);
       setAvailability(a.data || []);
 
-      // Compute enriched profile completeness
       const enriched = e.data;
       if (enriched) {
         const metricsMap: Record<string, any> = {};
@@ -63,145 +65,210 @@ export default function SummaryPage() {
     );
   }
 
+  const availableDays = availability.filter((a) => a.is_available).length;
+  const daysRemaining = goal?.target_date
+    ? Math.max(0, Math.ceil((new Date(goal.target_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="max-w-2xl mx-auto space-y-8">
+    <div className="min-h-screen py-6 px-4">
+      <div className="max-w-lg mx-auto space-y-4">
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl sm:text-3xl font-heading font-bold">Récapitulatif</h1>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" /> Déconnexion
+          <div>
+            <p className="text-sm text-muted-foreground">Bonjour{profile?.display_name ? ` ${profile.display_name}` : ""} 👋</p>
+            <h1 className="text-xl font-heading font-bold">Tableau de bord</h1>
+          </div>
+          <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground">
+            <LogOut className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Profile */}
-        <Section icon={User} title="Profil" onEdit={() => navigate("/onboarding/profile")}>
+        {/* Primary CTA — Mon plan */}
+        <button
+          onClick={() => navigate("/plan")}
+          className="w-full bg-primary text-primary-foreground rounded-xl p-4 flex items-center justify-between hover:opacity-90 transition-opacity active:scale-[0.98]"
+        >
+          <div className="flex items-center gap-3">
+            <Layers className="h-5 w-5" />
+            <div className="text-left">
+              <p className="font-heading font-semibold">Mon plan d'entraînement</p>
+              <p className="text-xs opacity-80">Semaines, séances & progression</p>
+            </div>
+          </div>
+          <ArrowRight className="h-5 w-5" />
+        </button>
+
+        {/* Quick links row */}
+        <div className="grid grid-cols-2 gap-3">
+          <QuickCard
+            icon={Activity}
+            label="Activités"
+            sub="Historique réalisé"
+            onClick={() => navigate("/activities")}
+          />
+          <QuickCard
+            icon={Target}
+            label="Trajectoire"
+            sub="Objectif & réalisme"
+            onClick={() => navigate("/trajectory")}
+          />
+        </div>
+
+        {/* Goal summary — compact */}
+        {goal && (
+          <div className="bg-card rounded-xl shadow-card p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Target className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium text-sm truncate">
+                  {goal.event_name || GOAL_TYPE_LABELS[goal.goal_type] || "Mon objectif"}
+                  {goal.format ? ` — ${goal.format}` : ""}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {goal.target_date ? `${goal.target_date}` : "Date non définie"}
+                  {daysRemaining !== null ? ` · J-${daysRemaining}` : ""}
+                </p>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/onboarding/goal")}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+
+        {/* Profile compact */}
+        <div className="bg-card rounded-xl shadow-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-primary" />
+              <h2 className="font-heading font-semibold text-sm">Profil</h2>
+            </div>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate("/onboarding/profile")}>
+              <Pencil className="h-3 w-3 mr-1" /> Modifier
+            </Button>
+          </div>
           {profile ? (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-              <Field label="Prénom" value={profile.display_name} />
-              <Field label="Sexe" value={profile.sex ? SEX_LABELS[profile.sex] : null} />
-              <Field label="Naissance" value={profile.date_of_birth} />
-              <Field label="Poids" value={profile.weight_kg ? `${profile.weight_kg} kg` : null} />
-              <Field label="Taille" value={profile.height_cm ? `${profile.height_cm} cm` : null} />
-              <Field label="Lieu" value={[profile.city, profile.country].filter(Boolean).join(", ") || null} />
-              <Field label="Piscine" value={profile.pool_access ? "Oui" : "Non"} />
-              <Field label="Home trainer" value={profile.home_trainer ? "Oui" : "Non"} />
-              <Field label="Salle" value={profile.gym_access ? "Oui" : "Non"} />
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {profile.display_name && <span>{profile.display_name}</span>}
+              {profile.sex && <span>{SEX_LABELS[profile.sex]}</span>}
+              {profile.weight_kg && <span>{profile.weight_kg} kg</span>}
+              {profile.height_cm && <span>{profile.height_cm} cm</span>}
+              {(profile.city || profile.country) && <span>{[profile.city, profile.country].filter(Boolean).join(", ")}</span>}
             </div>
           ) : (
-            <p className="text-muted-foreground text-sm">Profil non renseigné.</p>
+            <p className="text-muted-foreground text-xs">Non renseigné</p>
           )}
-        </Section>
+        </div>
 
-        {/* Goal */}
-        <Section icon={Target} title="Objectif" onEdit={() => navigate("/onboarding/goal")}>
-          {goal ? (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-              <Field label="Type" value={GOAL_TYPE_LABELS[goal.goal_type]} />
-              <Field label="Format" value={goal.format} />
-              <Field label="Compétition" value={goal.is_competition ? "Oui" : "Non"} />
-              <Field label="Événement" value={goal.event_name} />
-              <Field label="Date cible" value={goal.target_date} />
-              <Field label="Lieu" value={goal.location} />
-              <Field label="Objectif" value={goal.primary_objective} />
-              <Field label="Temps cible" value={goal.target_time} />
+        {/* Availability compact */}
+        <div className="bg-card rounded-xl shadow-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" />
+              <h2 className="font-heading font-semibold text-sm">Disponibilités</h2>
+              {availability.length > 0 && (
+                <span className="text-xs text-muted-foreground">· {availableDays}j/sem</span>
+              )}
             </div>
-          ) : (
-            <p className="text-muted-foreground text-sm">Objectif non renseigné.</p>
-          )}
-        </Section>
-
-        {/* Availability */}
-        <Section icon={Calendar} title="Disponibilités" onEdit={() => navigate("/onboarding/availability")}>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate("/onboarding/availability")}>
+              <Pencil className="h-3 w-3 mr-1" /> Modifier
+            </Button>
+          </div>
           {availability.length > 0 ? (
-            <div className="space-y-1 text-sm">
-              {DAYS.map((day, i) => {
-                const rule = availability.find(a => a.day_of_week === i);
+            <div className="flex gap-1.5">
+              {DAYS_SHORT.map((day, i) => {
+                const rule = availability.find((a) => a.day_of_week === i);
+                const active = rule?.is_available;
                 return (
-                  <div key={day} className="flex justify-between py-1">
-                    <span className="font-medium">{day}</span>
-                    <span className="text-muted-foreground">
-                      {rule?.is_available
-                        ? `${rule.max_duration_minutes ? rule.max_duration_minutes + " min" : "Disponible"}${rule.note ? " — " + rule.note : ""}`
-                        : "—"}
-                    </span>
+                  <div
+                    key={day}
+                    className={`flex-1 text-center py-1.5 rounded-md text-xs font-medium ${
+                      active ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground/50"
+                    }`}
+                  >
+                    {day}
                   </div>
                 );
               })}
             </div>
           ) : (
-            <p className="text-muted-foreground text-sm">Disponibilités non renseignées.</p>
+            <p className="text-muted-foreground text-xs">Non renseignées</p>
           )}
-        </Section>
-
-        {/* Plan entry */}
-        <div className="bg-card rounded-xl shadow-card p-6 space-y-3">
-          <div className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" />
-            <h2 className="font-heading font-semibold text-lg">Mon plan</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Consulte la structure de ton plan d'entraînement, tes semaines et tes séances.
-          </p>
-          <Button onClick={() => navigate("/plan")} variant="outline">
-            Voir mon plan
-          </Button>
         </div>
 
-        <div className="bg-gradient-subtle rounded-xl p-6 space-y-3">
+        {/* Enriched profile with score */}
+        <div className="bg-card rounded-xl shadow-card p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="font-heading font-semibold">Affiner mon profil</p>
+            <div className="flex items-center gap-2">
+              <ChevronRight className="h-4 w-4 text-primary" />
+              <h2 className="font-heading font-semibold text-sm">Profil enrichi</h2>
+            </div>
             {enrichedScore !== null && (
-              <span className={`text-lg font-bold ${enrichedScore >= 70 ? "text-accent" : enrichedScore >= 40 ? "text-primary" : "text-warning"}`}>
+              <span className={`text-sm font-bold ${enrichedScore >= 70 ? "text-accent" : enrichedScore >= 40 ? "text-primary" : "text-warning"}`}>
                 {enrichedScore}%
               </span>
             )}
           </div>
-          {enrichedScore !== null && (
-            <Progress value={enrichedScore} className="h-2" />
-          )}
-          <p className="text-sm text-muted-foreground">
+          {enrichedScore !== null && <Progress value={enrichedScore} className="h-1.5" />}
+          <p className="text-xs text-muted-foreground">
             {enrichedScore === null || enrichedScore === 0
-              ? "Complète ton profil détaillé pour obtenir un plan encore plus personnalisé."
+              ? "Complète ton profil pour un plan plus personnalisé."
               : enrichedScore < 40
-              ? "Ton profil est encore très partiel — quelques minutes suffisent à l'améliorer."
+              ? "Profil très partiel — quelques minutes suffisent."
               : enrichedScore < 70
-              ? "Bon début ! Quelques infos supplémentaires rendraient le plan encore meilleur."
+              ? "Bon début ! Quelques infos en plus aideraient."
               : enrichedScore < 90
-              ? "Profil bien renseigné. Plus que quelques détails pour un plan optimal."
-              : "Profil très complet ! 🎉 Tu peux toujours l'ajuster si besoin."}
+              ? "Bien renseigné. Plus que quelques détails."
+              : "Très complet ! 🎉"}
           </p>
-          <Button onClick={() => navigate("/onboarding/enriched")} variant={enrichedScore !== null && enrichedScore >= 90 ? "outline" : "default"} className="mt-2">
-            {enrichedScore !== null && enrichedScore >= 90 ? "Revoir mon profil" : "Affiner mon profil"}
+          <Button
+            onClick={() => navigate("/onboarding/enriched")}
+            variant={enrichedScore !== null && enrichedScore >= 90 ? "outline" : "default"}
+            size="sm"
+            className="w-full text-xs h-8"
+          >
+            {enrichedScore !== null && enrichedScore >= 90 ? "Revoir" : "Affiner mon profil"}
           </Button>
         </div>
+
+        {/* Strava link */}
+        <button
+          onClick={() => navigate("/strava")}
+          className="w-full bg-card rounded-xl shadow-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-[#FC4C02]/10 flex items-center justify-center">
+              <span className="text-[#FC4C02] font-bold text-xs">S</span>
+            </div>
+            <div>
+              <p className="font-medium text-sm">Strava</p>
+              <p className="text-xs text-muted-foreground">Connecter & importer</p>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
       </div>
     </div>
   );
 }
 
-function Section({ icon: Icon, title, onEdit, children }: { icon: any; title: string; onEdit: () => void; children: React.ReactNode }) {
+function QuickCard({ icon: Icon, label, sub, onClick }: { icon: any; label: string; sub: string; onClick: () => void }) {
   return (
-    <div className="bg-card rounded-xl shadow-card p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Icon className="h-5 w-5 text-primary" />
-          <h2 className="font-heading font-semibold text-lg">{title}</h2>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onEdit}>
-          <Pencil className="h-4 w-4 mr-1" /> Modifier
-        </Button>
+    <button
+      onClick={onClick}
+      className="bg-card rounded-xl shadow-card p-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left w-full"
+    >
+      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+        <Icon className="h-4 w-4 text-primary" />
       </div>
-      {children}
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <>
-      <span className="text-muted-foreground">{label}</span>
-      <span>{value || "—"}</span>
-    </>
+      <div>
+        <p className="font-medium text-sm">{label}</p>
+        <p className="text-xs text-muted-foreground">{sub}</p>
+      </div>
+    </button>
   );
 }
 
