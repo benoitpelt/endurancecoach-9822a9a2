@@ -529,7 +529,54 @@ function getEventVolumeGuidelines(goal: any): string {
 - Semaines de récupération: 5-9h (pas en dessous de 5h).
 - Première semaine du plan: partir du volume actuel de l'athlète ou 5-7h si inconnu.
 - 5-7 séances/semaine en phase de développement, 4-6 en récupération.
-- Natation: séances de 2500m à 4000m en développement, pas seulement 1000m technique.`;
+- Natation: séances de 2500m à 4000m en développement, pas seulement 1000m technique.
+
+PRIORISATION HEBDOMADAIRE IRONMAN (OBLIGATOIRE):
+Le vélo est LA discipline structurante du plan Ironman. Chaque semaine DOIT être construite autour du vélo.
+
+1. VÉLO = PILIER CENTRAL:
+- Chaque semaine standard DOIT contenir au minimum:
+  a) 1 séance vélo home trainer structurée en semaine (intervalles, sweet spot, force...)
+  b) 1 seconde séance vélo utile si possible (HT ou extérieur)
+  c) 1 sortie vélo longue le week-end dès que la disponibilité le permet
+- Le home trainer est un levier central de performance, PAS un plan B.
+
+2. WEEK-END = PRIORITÉ VÉLO LONG:
+- Si l'athlète a du temps le week-end, la PRIORITÉ va au vélo long.
+- Une sortie longue CAP ne doit JAMAIS remplacer la sortie longue vélo, sauf contrainte explicite.
+- Si une seule séance longue est possible le week-end → choisir le vélo.
+
+3. COURSE À PIED = PROTÉGÉE MAIS PAS SUR-PRIORISÉE:
+- La CAP sert à entretenir la base, l'économie et la capacité à courir après le vélo.
+- NE PAS empiler dans une même semaine:
+  * une séance CAP de forte charge (long Z3, seuil prolongé)
+  * ET une sortie longue CAP
+  quand le volume vélo spécifique est insuffisant.
+- Semaine standard CAP: 1 séance utile contrôlée + 1 footing court ou brick éventuel.
+- Les longues CAP restent prudentes et ne doivent pas empiéter sur la qualité du vélo.
+
+4. NATATION = MAINTIEN, PAS SUR-PRIORITÉ:
+- 1 séance natation hebdomadaire OBLIGATOIRE.
+- Une 2e séance natation possible seulement si elle n'entre pas en concurrence avec une séance vélo clé.
+
+5. NUTRITION SUR SÉANCES VÉLO CLÉS:
+- Les séances vélo importantes DOIVENT comporter une consigne glucidique/hydratation.
+- La progression nutritionnelle doit être pensée en priorité sur les longues sorties vélo.
+
+6. LOGIQUE DE RENDEMENT:
+- En cas de doute entre deux constructions de semaine, choisir celle qui augmente le plus la probabilité de réussite sur Ironman.
+- Favoriser le spécifique utile, limiter la fatigue non productive.
+- Le plan ne doit PAS ressembler à un plan triathlon généraliste équilibré ; il DOIT refléter la priorité vélo.
+
+7. RÈGLE DE VALIDATION AUTOMATIQUE:
+Une semaine N'EST PAS correctement priorisée si:
+- elle contient seulement 1 vélo structuré court
+- mais 2 séances CAP significatives
+- et aucune sortie vélo longue alors qu'une disponibilité week-end existe.
+Dans ce cas, corrige en:
+- remplaçant la sortie longue CAP par un vélo long
+- réduisant la charge CAP
+- maintenant la natation en soutien.`;
   }
 
   if (format.includes("half") || format.includes("70.3") || format.includes("mi")) {
