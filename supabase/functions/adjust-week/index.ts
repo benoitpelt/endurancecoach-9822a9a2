@@ -165,6 +165,13 @@ RÈGLES:
 6. Le week-end doit respecter la contrainte week-end si renseignée.
 7. Chaque séance proposée doit avoir un scheduled_date valide entre ${week.start_date} et ${week.end_date}.
 
+PRIORISATION IRONMAN (si le plan concerne un Ironman):
+- Le vélo est la discipline structurante. Protège les séances vélo clés (HT structuré + sortie longue vélo) en priorité absolue.
+- Si une seule séance longue est possible le week-end → choisir le vélo long plutôt que la CAP longue.
+- Ne sacrifie pas une séance vélo clé pour maintenir une séance CAP secondaire.
+- Maintiens au moins 1 natation/semaine.
+- En cas de conflit, favorise la structure qui maximise la probabilité de réussite sur Ironman.
+
 Réponds UNIQUEMENT avec un JSON valide (pas de markdown) au format:
 {
   "proposed_workouts": [
