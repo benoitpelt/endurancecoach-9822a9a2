@@ -12,62 +12,90 @@ function jsonResponse(body: any, status = 200) {
   });
 }
 
+/** Compute how many days since plan started */
+function daysSincePlanStart(planStartDate: string | null): number | null {
+  if (!planStartDate) return null;
+  return Math.ceil((Date.now() - new Date(planStartDate).getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/** Determine plan maturity label */
+function planMaturity(daysSinceStart: number | null): "too_early" | "early" | "established" {
+  if (daysSinceStart == null || daysSinceStart < 10) return "too_early";
+  if (daysSinceStart < 28) return "early";
+  return "established";
+}
+
 /** Fallback trajectory when AI is unavailable */
 function computeFallbackTrajectory(
   totalCompleted: number,
+  eligiblePlanned: number,
   keyPlanned: number,
   keyCompleted: number,
   conformityStats: Record<string, number>,
   daysRemaining: number | null,
+  maturity: "too_early" | "early" | "established",
 ) {
-  const hasEnoughData = totalCompleted >= 3;
-  if (!hasEnoughData) {
+  // Plan too recent → don't conclude negatively
+  if (maturity === "too_early" || (maturity === "early" && totalCompleted < 3)) {
     return {
       trajectory_status: "insufficient_data",
       realism_score_percent: null,
-      summary_short: "Pas encore assez de données pour évaluer ta trajectoire.",
-      summary_detailed: "Continue à suivre ton plan et reviens dans quelques séances pour obtenir une première évaluation.",
-      supporting_points: [],
+      summary_short: maturity === "too_early"
+        ? "Ton plan vient de démarrer, il est trop tôt pour évaluer ta trajectoire."
+        : "Encore peu de données disponibles. Continue à suivre ton plan pour obtenir une première évaluation.",
+      summary_detailed: "Le plan est encore récent. L'évaluation deviendra plus fiable après quelques semaines d'entraînement régulier.",
+      supporting_points: totalCompleted > 0 ? [`${totalCompleted} séance(s) déjà réalisée(s), c'est un bon début.`] : [],
       weakening_points: [],
       discipline_breakdown: {},
       suggests_plan_review: false,
     };
   }
 
+  const completionRate = eligiblePlanned > 0 ? totalCompleted / eligiblePlanned : 0.5;
   const keyRate = keyPlanned > 0 ? keyCompleted / keyPlanned : 0.5;
   const conformTotal = Object.values(conformityStats).reduce((a, b) => a + b, 0);
   const conformOk = (conformityStats["conforme"] || 0) + (conformityStats["acceptable"] || 0);
   const conformRate = conformTotal > 0 ? conformOk / conformTotal : 0.5;
 
-  const rawScore = Math.round((keyRate * 0.5 + conformRate * 0.3 + 0.2) * 100);
-  const score = Math.max(20, Math.min(85, rawScore));
+  // Weight completion and key rates more when established, be gentler when early
+  const maturityFactor = maturity === "early" ? 0.15 : 0.2;
+  const rawScore = Math.round((keyRate * 0.4 + conformRate * 0.25 + completionRate * maturityFactor + (1 - maturityFactor - 0.65) + 0.2) * 100);
+  const score = Math.max(30, Math.min(85, rawScore));
 
   let status = "watch";
   if (score >= 70) status = "on_track";
-  else if (score < 40) status = "fragile";
+  else if (score < 40 && maturity === "established") status = "fragile";
 
   const supporting: string[] = [];
   const weakening: string[] = [];
 
+  if (totalCompleted > 0) supporting.push(`${totalCompleted} séance(s) réalisée(s) sur ${eligiblePlanned} éligible(s)`);
   if (keyRate >= 0.7) supporting.push("Bonne assiduité sur les séances clés");
-  else if (keyRate < 0.5) weakening.push("Plusieurs séances clés manquées récemment");
+  if (conformRate >= 0.6 && conformTotal >= 2) supporting.push("Conformité globale satisfaisante");
 
-  if (conformRate >= 0.6) supporting.push("Conformité globale satisfaisante");
-  else weakening.push("Écarts fréquents par rapport au plan");
-
-  if (totalCompleted >= 5) supporting.push(`${totalCompleted} séances réalisées récemment`);
+  if (maturity === "early") {
+    if (keyPlanned > 0 && keyCompleted === 0) weakening.push("Aucune séance clé encore réalisée, mais le plan est récent");
+    if (completionRate < 0.3 && eligiblePlanned >= 5) weakening.push("Taux de réalisation encore faible");
+  } else {
+    if (keyRate < 0.5 && keyPlanned >= 3) weakening.push("Plusieurs séances clés manquées");
+    if (conformRate < 0.4 && conformTotal >= 3) weakening.push("Écarts fréquents par rapport au plan");
+  }
 
   return {
     trajectory_status: status,
     realism_score_percent: score,
-    summary_short: score >= 70
-      ? "Ta préparation avance bien, continue sur cette lancée."
-      : "Ta trajectoire mérite attention, mais rien d'irréversible.",
-    summary_detailed: "Cette évaluation est basée sur ta régularité et le respect des séances clés. Elle sera affinée avec davantage de données.",
+    summary_short: maturity === "early"
+      ? "Le plan est encore récent, cette évaluation est préliminaire."
+      : score >= 70
+        ? "Ta préparation avance bien, continue sur cette lancée."
+        : "Ta trajectoire mérite attention, mais rien d'irréversible.",
+    summary_detailed: maturity === "early"
+      ? "Tu démarres ton plan. L'évaluation sera plus fiable dans quelques semaines. Pour l'instant, l'important est de maintenir la régularité."
+      : "Cette évaluation est basée sur ta régularité et le respect des séances clés. Elle sera affinée avec davantage de données.",
     supporting_points: supporting,
     weakening_points: weakening,
     discipline_breakdown: {},
-    suggests_plan_review: score < 40,
+    suggests_plan_review: maturity === "established" && score < 40,
   };
 }
 
@@ -97,8 +125,6 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    console.log("[compute-trajectory] goal found:", !!goal);
-
     if (!goal) {
       return jsonResponse({
         trajectory: {
@@ -125,19 +151,31 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    console.log("[compute-trajectory] plan found:", !!plan, plan?.status);
+    console.log("[compute-trajectory] plan found:", !!plan, plan?.status, "start_date:", plan?.start_date);
 
-    // Load recent completed workouts (last 6 weeks)
-    const sixWeeksAgo = new Date(Date.now() - 42 * 24 * 60 * 60 * 1000).toISOString();
+    // ── KEY FIX: Bound analysis window by plan start date ──
+    const now = new Date();
+    const sixWeeksAgo = new Date(Date.now() - 42 * 24 * 60 * 60 * 1000);
+    const planStartDate = plan?.start_date ? new Date(plan.start_date) : null;
+    // analysis_start_date = max(plan_start_date, now - 42 days)
+    const analysisStart = planStartDate && planStartDate > sixWeeksAgo ? planStartDate : sixWeeksAgo;
+    const analysisStartISO = analysisStart.toISOString();
+
+    const daysSinceStart = daysSincePlanStart(plan?.start_date);
+    const maturity = planMaturity(daysSinceStart);
+    console.log("[compute-trajectory] analysisStart:", analysisStartISO, "daysSinceStart:", daysSinceStart, "maturity:", maturity);
+
+    // Load completed workouts within analysis window
     const { data: completedWorkouts } = await supabase
       .from("completed_workouts")
       .select("*")
       .eq("user_id", userId)
-      .gte("start_date", sixWeeksAgo)
+      .gte("start_date", analysisStartISO)
       .order("start_date", { ascending: false });
 
-    // Load planned workouts for context
-    let plannedWorkouts: any[] = [];
+    // Load planned workouts — only past/today within analysis window
+    let eligiblePlanned: any[] = [];
+    let allPlannedWorkouts: any[] = [];
     if (plan) {
       const { data: weeks } = await supabase
         .from("training_weeks")
@@ -152,15 +190,24 @@ Deno.serve(async (req) => {
           .select("*")
           .in("week_id", weekIds)
           .order("scheduled_date");
-        plannedWorkouts = pw || [];
+        allPlannedWorkouts = pw || [];
+
+        // Only count workouts scheduled from analysis start to today (inclusive)
+        const todayStr = now.toISOString().slice(0, 10);
+        const analysisStartStr = analysisStart.toISOString().slice(0, 10);
+        eligiblePlanned = allPlannedWorkouts.filter((w: any) => {
+          if (!w.scheduled_date) return false;
+          return w.scheduled_date >= analysisStartStr && w.scheduled_date <= todayStr;
+        });
       }
     }
 
-    // Load recent analyses
+    // Load recent analyses within analysis window
     const { data: analyses } = await supabase
       .from("workout_analyses")
       .select("*")
       .eq("user_id", userId)
+      .gte("created_at", analysisStartISO)
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -173,15 +220,13 @@ Deno.serve(async (req) => {
       .limit(10);
 
     // Compute stats
-    const now = new Date();
     const targetDate = goal.target_date ? new Date(goal.target_date) : null;
     const daysRemaining = targetDate ? Math.ceil((targetDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
     const completedList = completedWorkouts || [];
     const totalCompleted = completedList.length;
-    const totalPlanned = plannedWorkouts.length;
-    const pastPlanned = plannedWorkouts.filter((w: any) => w.scheduled_date && new Date(w.scheduled_date) <= now);
-    const keyWorkoutsPlanned = pastPlanned.filter((w: any) => w.workout_priority === "key");
+    const totalEligible = eligiblePlanned.length;
+    const keyWorkoutsPlanned = eligiblePlanned.filter((w: any) => w.workout_priority === "key");
     const completedIds = new Set(completedList.map((c: any) => c.planned_workout_id).filter(Boolean));
     const keyWorkoutsCompleted = keyWorkoutsPlanned.filter((w: any) => completedIds.has(w.id));
 
@@ -195,12 +240,13 @@ Deno.serve(async (req) => {
 
     console.log("[compute-trajectory] stats:", {
       totalCompleted,
-      totalPlanned,
+      totalEligible,
       keyPlanned: keyWorkoutsPlanned.length,
       keyCompleted: keyWorkoutsCompleted.length,
       conformity: conformityStats,
       adjustments: recentAdjustmentsCount,
       daysRemaining,
+      maturity,
     });
 
     // Try AI, with fallback
@@ -209,11 +255,11 @@ Deno.serve(async (req) => {
 
     if (!lovableApiKey) {
       console.warn("[compute-trajectory] LOVABLE_API_KEY missing, using fallback");
-      trajectory = computeFallbackTrajectory(totalCompleted, keyWorkoutsPlanned.length, keyWorkoutsCompleted.length, conformityStats, daysRemaining);
+      trajectory = computeFallbackTrajectory(totalCompleted, totalEligible, keyWorkoutsPlanned.length, keyWorkoutsCompleted.length, conformityStats, daysRemaining, maturity);
     } else {
       // Build sport breakdown for prompt
       const sportBreakdown: Record<string, { completed: number; planned: number }> = {};
-      for (const w of pastPlanned) {
+      for (const w of eligiblePlanned) {
         if (!sportBreakdown[w.sport_type]) sportBreakdown[w.sport_type] = { completed: 0, planned: 0 };
         sportBreakdown[w.sport_type].planned++;
         if (completedIds.has(w.id)) sportBreakdown[w.sport_type].completed++;
@@ -223,9 +269,21 @@ Deno.serve(async (req) => {
         if (!c.planned_workout_id) sportBreakdown[c.sport_type].completed++;
       }
 
-      const futurePlanned = plannedWorkouts.filter((w: any) => w.scheduled_date && new Date(w.scheduled_date) > now);
+      const futurePlanned = allPlannedWorkouts.filter((w: any) => w.scheduled_date && w.scheduled_date > now.toISOString().slice(0, 10));
+
+      const maturityNote = maturity === "too_early"
+        ? "ATTENTION : Le plan est très récent (moins de 10 jours). Sois très prudent dans tes conclusions. Ne tire aucune conclusion négative forte."
+        : maturity === "early"
+          ? "ATTENTION : Le plan est encore jeune (moins de 4 semaines). Reste prudent et modéré dans tes conclusions. Valorise les séances déjà réalisées."
+          : "Le plan a plus de 4 semaines de recul, tu peux tirer des conclusions plus affirmées.";
 
       const prompt = `Tu es un coach d'endurance expert et bienveillant. Analyse la trajectoire de cet athlète vers son objectif.
+
+CONTEXTE TEMPOREL CRITIQUE:
+${maturityNote}
+- Le plan a démarré il y a ${daysSinceStart ?? "?"} jours (date de début : ${plan?.start_date || "inconnue"}).
+- Fenêtre d'analyse : du ${analysisStart.toISOString().slice(0, 10)} à aujourd'hui.
+- Seules les séances planifiées dans cette fenêtre comptent dans le dénominateur.
 
 OBJECTIF:
 - Type: ${goal.goal_type}
@@ -238,13 +296,12 @@ OBJECTIF:
 
 PLAN:
 - Statut: ${plan?.status || "aucun plan"}
-- Séances planifiées (total): ${totalPlanned}
-- Séances futures: ${futurePlanned.length}
-- Séances passées planifiées: ${pastPlanned.length}
+- Séances éligibles à date: ${totalEligible}
+- Séances futures restantes: ${futurePlanned.length}
 
-RÉALISÉ (6 dernières semaines):
+RÉALISÉ (fenêtre d'analyse):
 - Séances complétées: ${totalCompleted}
-- Séances clés planifiées (passé): ${keyWorkoutsPlanned.length}
+- Séances clés éligibles: ${keyWorkoutsPlanned.length}
 - Séances clés réalisées: ${keyWorkoutsCompleted.length}
 
 CONFORMITÉ RÉCENTE:
@@ -272,11 +329,14 @@ Produis un JSON avec exactement cette structure:
 Règles:
 - Sois prudent et bienveillant, jamais brutal
 - Le pourcentage ne doit jamais être présenté comme une vérité absolue
+- Le dénominateur est ${totalEligible} séances éligibles, PAS le total du plan
+- Si le plan est récent (<4 semaines), ne conclus pas négativement même si le taux de réalisation semble faible
+- Valorise les séances déjà réalisées, même peu nombreuses
+- Ne dis jamais "3 sur 59" car 59 inclut les séances futures non encore éligibles
 - Une mauvaise semaine isolée ne casse pas tout
 - Les séances clés pèsent plus que les optionnelles
-- Tiens compte des tendances, pas seulement du dernier événement
-- Si peu de données, reste prudent (score autour de 50-60, statut "watch")
-- Le statut "fragile" ne doit être utilisé que si plusieurs signaux convergent
+- Si peu de données ou plan récent, reste prudent (score autour de 50-65, statut "watch")
+- Le statut "fragile" ne doit être utilisé que si le plan est établi ET que plusieurs signaux convergent
 - Réponds UNIQUEMENT avec le JSON, sans markdown ni commentaire`;
 
       try {
@@ -296,8 +356,7 @@ Règles:
         if (!aiRes.ok) {
           const errText = await aiRes.text();
           console.error("[compute-trajectory] AI gateway error:", aiRes.status, errText);
-          console.warn("[compute-trajectory] Falling back to rule-based computation");
-          trajectory = computeFallbackTrajectory(totalCompleted, keyWorkoutsPlanned.length, keyWorkoutsCompleted.length, conformityStats, daysRemaining);
+          trajectory = computeFallbackTrajectory(totalCompleted, totalEligible, keyWorkoutsPlanned.length, keyWorkoutsCompleted.length, conformityStats, daysRemaining, maturity);
         } else {
           const aiData = await aiRes.json();
           let content = aiData.choices?.[0]?.message?.content || "";
@@ -307,12 +366,12 @@ Règles:
             trajectory = JSON.parse(content);
           } catch {
             console.error("[compute-trajectory] Failed to parse AI JSON:", content.substring(0, 200));
-            trajectory = computeFallbackTrajectory(totalCompleted, keyWorkoutsPlanned.length, keyWorkoutsCompleted.length, conformityStats, daysRemaining);
+            trajectory = computeFallbackTrajectory(totalCompleted, totalEligible, keyWorkoutsPlanned.length, keyWorkoutsCompleted.length, conformityStats, daysRemaining, maturity);
           }
         }
       } catch (fetchErr) {
         console.error("[compute-trajectory] Fetch error:", fetchErr);
-        trajectory = computeFallbackTrajectory(totalCompleted, keyWorkoutsPlanned.length, keyWorkoutsCompleted.length, conformityStats, daysRemaining);
+        trajectory = computeFallbackTrajectory(totalCompleted, totalEligible, keyWorkoutsPlanned.length, keyWorkoutsCompleted.length, conformityStats, daysRemaining, maturity);
       }
     }
 
@@ -344,8 +403,13 @@ Règles:
         suggests_plan_review: trajectory.suggests_plan_review || false,
         trigger_event: "manual_compute",
         raw_input: {
+          analysis_start: analysisStart.toISOString().slice(0, 10),
+          plan_start: plan?.start_date,
+          days_since_plan_start: daysSinceStart,
+          maturity,
           days_remaining: daysRemaining,
           total_completed: totalCompleted,
+          eligible_planned: totalEligible,
           key_completed: keyWorkoutsCompleted.length,
           key_planned: keyWorkoutsPlanned.length,
           conformity: conformityStats,
@@ -357,7 +421,6 @@ Règles:
 
     if (insertErr) {
       console.error("[compute-trajectory] Insert error:", insertErr);
-      // Still return the trajectory even if snapshot save fails
       return jsonResponse({ trajectory, snapshot_id: null });
     }
 
