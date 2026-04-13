@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { Target, TrendingUp, AlertTriangle, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof TrendingUp }> = {
   on_track: { label: "En bonne voie", color: "text-accent", icon: TrendingUp },
@@ -12,7 +11,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
 type TrajectoryWidgetProps = {
   trajectory: {
     trajectory_status: string;
-    realism_score_percent: number;
+    realism_score_percent: number | null;
     summary_short: string;
     supporting_points?: string[];
     weakening_points?: string[];

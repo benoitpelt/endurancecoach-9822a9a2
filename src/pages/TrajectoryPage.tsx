@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Target, TrendingUp, AlertTriangle, RefreshCw, CheckCircle, XCircle, History } from "lucide-react";
+import { Loader2, ArrowLeft, Target, TrendingUp, AlertTriangle, RefreshCw, CheckCircle, XCircle, History, Calendar, Zap, Star, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -13,12 +13,44 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   watch: { label: "À surveiller", color: "text-warning", bg: "bg-warning/10" },
   ambitious: { label: "Ambitieux", color: "text-warning", bg: "bg-warning/10" },
   fragile: { label: "Fragile", color: "text-destructive", bg: "bg-destructive/10" },
+  insufficient_data: { label: "Données insuffisantes", color: "text-muted-foreground", bg: "bg-muted" },
 };
 
 const SPORT_LABELS: Record<string, string> = {
   swim: "🏊 Natation", bike: "🚴 Vélo", run: "🏃 Course à pied",
   strength: "💪 Renforcement", mobility: "🧘 Mobilité",
 };
+
+const DIMENSION_CONFIG: Record<string, { label: string; icon: typeof Calendar }> = {
+  calendar: { label: "Calendrier", icon: Calendar },
+  load: { label: "Charge globale", icon: Zap },
+  key_workouts: { label: "Séances clés", icon: Star },
+  continuity: { label: "Continuité", icon: Activity },
+  content: { label: "Contenu", icon: CheckCircle },
+};
+
+function DimensionBar({ dimKey, rate, summary }: { dimKey: string; rate: number; summary: string }) {
+  const conf = DIMENSION_CONFIG[dimKey];
+  if (!conf) return null;
+  const Icon = conf.icon;
+  const barColor = rate >= 70 ? "bg-accent" : rate >= 45 ? "bg-warning" : "bg-destructive";
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-sm font-medium">{conf.label}</span>
+        </div>
+        <span className="text-xs font-medium text-muted-foreground">{rate}%</span>
+      </div>
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${Math.max(4, rate)}%` }} />
+      </div>
+      <p className="text-xs text-muted-foreground">{summary}</p>
+    </div>
+  );
+}
 
 export default function TrajectoryPage() {
   const { user } = useAuth();
@@ -29,6 +61,7 @@ export default function TrajectoryPage() {
   const [latestSnapshot, setLatestSnapshot] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+  const [lastTrajectoryResponse, setLastTrajectoryResponse] = useState<any>(null);
 
   useEffect(() => {
     if (user) loadData();
@@ -88,6 +121,8 @@ export default function TrajectoryPage() {
       if (res.data?.error) throw new Error(res.data.error);
 
       const traj = res.data?.trajectory;
+      setLastTrajectoryResponse(traj);
+
       if (traj?.trajectory_status === "insufficient_data") {
         toast.info(traj.summary_short || "Pas encore assez de données pour calculer ta trajectoire.");
       } else {
@@ -99,6 +134,15 @@ export default function TrajectoryPage() {
     } finally {
       setComputing(false);
     }
+  };
+
+  // Get adherence dimensions from latest data
+  const getAdherenceDimensions = () => {
+    // Prefer live response, fallback to snapshot raw_input
+    if (lastTrajectoryResponse?.adherence_dimensions) return lastTrajectoryResponse.adherence_dimensions;
+    const rawInput = latestSnapshot?.raw_input as Record<string, any> | null;
+    if (rawInput?.adherence_dimensions) return rawInput.adherence_dimensions;
+    return null;
   };
 
   if (loading) {
@@ -128,6 +172,7 @@ export default function TrajectoryPage() {
   }
 
   const config = latestSnapshot ? (STATUS_CONFIG[latestSnapshot.trajectory_status] || STATUS_CONFIG.watch) : null;
+  const adherenceDims = getAdherenceDimensions();
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -180,38 +225,56 @@ export default function TrajectoryPage() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-6">
-                <div className="relative w-20 h-20 flex-shrink-0">
-                  <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                    <circle cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
-                    <circle
-                      cx="40" cy="40" r="34" fill="none"
-                      stroke="currentColor" strokeWidth="6" strokeLinecap="round"
-                      strokeDasharray={`${(latestSnapshot.realism_score_percent / 100) * 213.6} 213.6`}
-                      className={config.color}
-                    />
-                  </svg>
-                  <span className="absolute inset-0 flex items-center justify-center text-lg font-heading font-bold">
-                    {latestSnapshot.realism_score_percent}%
-                  </span>
-                </div>
-                <div>
-                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${config.bg} ${config.color}`}>
-                    {latestSnapshot.trajectory_status === "on_track" ? (
-                      <TrendingUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                    )}
-                    {config.label}
+              {latestSnapshot.realism_score_percent != null ? (
+                <div className="flex items-center gap-6">
+                  <div className="relative w-20 h-20 flex-shrink-0">
+                    <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                      <circle cx="40" cy="40" r="34" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
+                      <circle
+                        cx="40" cy="40" r="34" fill="none"
+                        stroke="currentColor" strokeWidth="6" strokeLinecap="round"
+                        strokeDasharray={`${(latestSnapshot.realism_score_percent / 100) * 213.6} 213.6`}
+                        className={config.color}
+                      />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center text-lg font-heading font-bold">
+                      {latestSnapshot.realism_score_percent}%
+                    </span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">{latestSnapshot.summary_short}</p>
+                  <div>
+                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${config.bg} ${config.color}`}>
+                      {latestSnapshot.trajectory_status === "on_track" ? (
+                        <TrendingUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                      )}
+                      {config.label}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">{latestSnapshot.summary_short}</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-2">
+                  <p className="text-sm text-muted-foreground">{latestSnapshot.summary_short}</p>
+                </div>
+              )}
 
               <p className="text-xs text-muted-foreground italic">
                 Ce pourcentage est une estimation indicative, pas une prédiction exacte.
               </p>
             </div>
+
+            {/* Adherence dimensions */}
+            {adherenceDims && (
+              <div className="bg-card rounded-xl shadow-card p-6 space-y-5">
+                <h3 className="font-heading font-semibold">Analyse multi-dimensionnelle</h3>
+                {["load", "key_workouts", "continuity", "content", "calendar"].map(key => {
+                  const dim = adherenceDims[key];
+                  if (!dim) return null;
+                  return <DimensionBar key={key} dimKey={key} rate={dim.rate} summary={dim.summary} />;
+                })}
+              </div>
+            )}
 
             {/* Detailed explanation */}
             {latestSnapshot.summary_detailed && (
@@ -285,11 +348,10 @@ export default function TrajectoryPage() {
                 <div>
                   <p className="font-heading font-semibold text-sm">Une revue du plan pourrait être utile</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Les signaux récents suggèrent qu'une adaptation du plan serait bénéfique. Tu peux ajuster ta semaine en cours ou recalibrer tes prochaines séances.
+                    Les signaux récents suggèrent qu'une adaptation du plan serait bénéfique.
                   </p>
                   <div className="flex gap-2 mt-3">
                     <Button size="sm" variant="outline" onClick={() => navigate("/plan")}>Voir mon plan</Button>
-                    <Button size="sm" variant="outline" onClick={() => navigate("/strava")}>Recalibrer</Button>
                   </div>
                 </div>
               </div>
@@ -328,7 +390,7 @@ export default function TrajectoryPage() {
                     <div className="flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full ${sc.color === "text-accent" ? "bg-accent" : sc.color === "text-destructive" ? "bg-destructive" : "bg-warning"}`} />
                       <div>
-                        <span className="text-sm font-medium">{s.realism_score_percent}%</span>
+                        <span className="text-sm font-medium">{s.realism_score_percent != null ? `${s.realism_score_percent}%` : "—"}</span>
                         <span className={`ml-2 text-xs ${sc.color}`}>{sc.label}</span>
                       </div>
                     </div>
