@@ -173,6 +173,16 @@ Deno.serve(async (req) => {
 
     if (planErr) throw planErr;
 
+    // Log regeneration event if there was a source plan
+    if (sourcePlanId) {
+      await supabase.from("plan_regenerations").insert({
+        user_id: userId,
+        source_plan_id: sourcePlanId,
+        generated_plan_id: newPlan.id,
+        reason: "full_plan_regeneration",
+      });
+    }
+
     // Create blocks, weeks, workouts
     const blocks = planData.blocks || [];
     let globalWeekNum = 1;
