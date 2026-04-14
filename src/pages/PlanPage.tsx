@@ -4,10 +4,20 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Calendar, Target, ChevronRight, Layers, Sparkles, AlertTriangle, Info, Activity, Dumbbell } from "lucide-react";
+import { Loader2, ArrowLeft, Calendar, Target, ChevronRight, Layers, Sparkles, AlertTriangle, Info, Activity, Dumbbell, RotateCcw, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Brouillon",
@@ -52,6 +62,7 @@ type Plan = {
   end_date: string | null;
   notes: string | null;
   goal_id: string | null;
+  created_at: string;
 };
 
 type Block = {
@@ -83,11 +94,21 @@ type Workout = {
   duration_target_minutes: number | null;
 };
 
+type Regeneration = {
+  id: string;
+  source_plan_id: string;
+  generated_plan_id: string;
+  reason: string | null;
+  restored_at: string | null;
+  created_at: string;
+};
+
 export default function PlanPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [recalibrating, setRecalibrating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -99,6 +120,10 @@ export default function PlanPage() {
   const [trajectoryData, setTrajectoryData] = useState<any>(null);
   const [trajectoryLoading, setTrajectoryLoading] = useState(false);
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+  const [lastRegeneration, setLastRegeneration] = useState<Regeneration | null>(null);
+  const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -142,10 +167,9 @@ export default function PlanPage() {
   };
 
   const checkProfileCompleteness = async () => {
-    const [{ data: prof }, { data: goalData }, { data: enriched }] = await Promise.all([
+    const [{ data: prof }, { data: goalData }] = await Promise.all([
       supabase.from("athlete_profiles").select("onboarding_completed").eq("user_id", user!.id).maybeSingle(),
       supabase.from("race_goals").select("id").eq("user_id", user!.id).limit(1).maybeSingle(),
-      supabase.from("athlete_enriched_profiles").select("enriched_onboarding_completed").eq("user_id", user!.id).maybeSingle(),
     ]);
     setProfileComplete(!!(prof?.onboarding_completed && goalData));
   };
@@ -172,6 +196,35 @@ export default function PlanPage() {
       const currentPlan = plans[0] as Plan;
       setPlan(currentPlan);
 
+      // Load last restorable regeneration
+      const { data: regens } = await supabase
+        .from("plan_regenerations" as any)
+        .select("*")
+        .eq("user_id", user!.id)
+        .eq("generated_plan_id", currentPlan.id)
+        .is("restored_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      
+      if (regens && regens.length > 0) {
+        // Check if source plan still exists as archived
+        const regen = regens[0] as any;
+        const { data: sourcePlan } = await supabase
+          .from("training_plans")
+          .select("id, status")
+          .eq("id", regen.source_plan_id)
+          .eq("status", "archived")
+          .maybeSingle();
+        
+        if (sourcePlan) {
+          setLastRegeneration(regen as Regeneration);
+        } else {
+          setLastRegeneration(null);
+        }
+      } else {
+        setLastRegeneration(null);
+      }
+
       if (currentPlan.goal_id) {
         const { data: goalData } = await supabase
           .from("race_goals")
@@ -192,7 +245,6 @@ export default function PlanPage() {
 
       if (loadedBlocks.length > 0) {
         const blockIds = loadedBlocks.map((b) => b.id);
-
         const { data: weeksData } = await supabase
           .from("training_weeks")
           .select("*")
@@ -209,7 +261,6 @@ export default function PlanPage() {
             .select("id, week_id, sport_type, workout_priority, scheduled_date, duration_target_minutes")
             .in("week_id", weekIds)
             .order("scheduled_date");
-
           setWorkouts((workoutsData || []) as Workout[]);
         }
       }
@@ -217,6 +268,41 @@ export default function PlanPage() {
       setError("Impossible de charger le plan. Réessaie plus tard.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const recalibrateWorkouts = async () => {
+    if (!user) return;
+    try {
+      setRecalibrating(true);
+      setError(null);
+
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) throw new Error("Session expirée.");
+
+      const res = await supabase.functions.invoke("recalibrate-workouts", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.error) {
+        const msg = typeof res.error === "object" && "message" in res.error
+          ? (res.error as any).message : String(res.error);
+        throw new Error(msg);
+      }
+
+      const data = res.data;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(data?.message || "Séances recalibrées !");
+      await loadPlan();
+    } catch (e: any) {
+      console.error(e);
+      const msg = e?.message || "Erreur lors du recalibrage.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setRecalibrating(false);
     }
   };
 
@@ -237,8 +323,7 @@ export default function PlanPage() {
 
       if (res.error) {
         const msg = typeof res.error === "object" && "message" in res.error
-          ? (res.error as any).message
-          : String(res.error);
+          ? (res.error as any).message : String(res.error);
         throw new Error(msg);
       }
 
@@ -249,7 +334,7 @@ export default function PlanPage() {
         setGenerationNotes(data.generation_notes);
       }
 
-      toast.success("Plan généré avec succès !");
+      toast.success("Plan régénéré avec succès !");
       await loadPlan();
     } catch (e: any) {
       console.error(e);
@@ -258,6 +343,42 @@ export default function PlanPage() {
       toast.error(msg);
     } finally {
       setGenerating(false);
+      setShowRegenerateDialog(false);
+    }
+  };
+
+  const restorePreviousPlan = async () => {
+    if (!user || !lastRegeneration || !plan) return;
+    try {
+      setRestoring(true);
+
+      // Archive current plan
+      await supabase
+        .from("training_plans")
+        .update({ status: "archived" } as any)
+        .eq("id", plan.id);
+
+      // Restore source plan
+      await supabase
+        .from("training_plans")
+        .update({ status: "active" } as any)
+        .eq("id", lastRegeneration.source_plan_id);
+
+      // Mark regeneration as restored
+      await supabase
+        .from("plan_regenerations" as any)
+        .update({ restored_at: new Date().toISOString() } as any)
+        .eq("id", lastRegeneration.id);
+
+      toast.success("Plan précédent restauré avec succès !");
+      await loadPlan();
+      await loadTrajectory();
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Erreur lors de la restauration.");
+    } finally {
+      setRestoring(false);
+      setShowRestoreDialog(false);
     }
   };
 
@@ -282,8 +403,7 @@ export default function PlanPage() {
             </div>
             <h1 className="text-2xl font-heading font-bold">Générer ton plan</h1>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Ton plan d'entraînement sera construit à partir de ton profil, ton objectif et tes disponibilités. 
-              Il sera structuré en blocs, semaines et séances avec des priorités claires.
+              Ton plan d'entraînement sera construit à partir de ton profil, ton objectif et tes disponibilités.
             </p>
 
             {!profileComplete && (
@@ -291,7 +411,7 @@ export default function PlanPage() {
                 <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
                   <p className="font-medium text-warning">Profil incomplet</p>
-                  <p className="text-muted-foreground">Le plan sera généré avec des hypothèses prudentes. Tu peux d'abord compléter ton profil pour un plan plus personnalisé.</p>
+                  <p className="text-muted-foreground">Le plan sera généré avec des hypothèses prudentes.</p>
                 </div>
               </div>
             )}
@@ -304,25 +424,17 @@ export default function PlanPage() {
             )}
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-              <Button
-                onClick={generatePlan}
-                disabled={generating}
-                className="gap-2"
-              >
+              <Button onClick={generatePlan} disabled={generating} className="gap-2">
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 {generating ? "Génération en cours…" : "Générer mon plan"}
               </Button>
               <Button variant="outline" onClick={() => navigate("/strava")} className="gap-2">
-                <Activity className="h-4 w-4" />
-                Connecter Strava
-              </Button>
-              <Button variant="ghost" onClick={() => navigate("/summary")}>
-                Compléter mon profil
+                <Activity className="h-4 w-4" /> Connecter Strava
               </Button>
             </div>
             {generating && (
               <p className="text-xs text-muted-foreground animate-pulse">
-                Analyse de ton profil et construction du plan… Cela peut prendre quelques secondes.
+                Analyse de ton profil et construction du plan…
               </p>
             )}
           </div>
@@ -336,9 +448,6 @@ export default function PlanPage() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
         <p className="text-muted-foreground text-center">Génération de ton plan en cours…</p>
-        <p className="text-xs text-muted-foreground text-center max-w-sm">
-          Le coach analyse ton profil, ton objectif et tes disponibilités pour construire un plan personnalisé.
-        </p>
       </div>
     );
   }
@@ -374,6 +483,29 @@ export default function PlanPage() {
         <Button variant="ghost" onClick={() => navigate("/summary")} className="gap-2">
           <ArrowLeft className="h-4 w-4" /> Retour
         </Button>
+
+        {/* Restore banner */}
+        {lastRegeneration && (
+          <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-lg p-4">
+            <RotateCcw className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-2">
+              <div className="text-sm">
+                <p className="font-medium">Ce plan a été régénéré le {formatDate(lastRegeneration.created_at.split("T")[0])}</p>
+                <p className="text-muted-foreground">Le plan précédent est encore disponible. Tu peux le restaurer si cette régénération ne te convient pas.</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRestoreDialog(true)}
+                disabled={restoring}
+                className="gap-2"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Restaurer le plan précédent
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Plan header */}
         <div className="bg-card rounded-xl shadow-card p-6 space-y-3">
@@ -423,7 +555,7 @@ export default function PlanPage() {
           </div>
         )}
 
-        {/* Actions */}
+        {/* Actions — Recalibrate is primary, Regenerate is secondary */}
         <div className="flex flex-wrap gap-2 justify-end">
           <Button
             variant="outline"
@@ -444,13 +576,22 @@ export default function PlanPage() {
             Strava
           </Button>
           <Button
-            variant="outline"
             size="sm"
-            onClick={generatePlan}
-            disabled={generating}
+            onClick={recalibrateWorkouts}
+            disabled={recalibrating || generating}
             className="gap-2"
           >
-            {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {recalibrating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {recalibrating ? "Recalibrage…" : "Recalibrer mes séances"}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowRegenerateDialog(true)}
+            disabled={generating || recalibrating}
+            className="gap-2 text-muted-foreground"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
             Régénérer le plan
           </Button>
         </div>
@@ -530,6 +671,66 @@ export default function PlanPage() {
           })
         )}
       </div>
+
+      {/* Full regeneration confirmation dialog */}
+      <AlertDialog open={showRegenerateDialog} onOpenChange={setShowRegenerateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Régénérer complètement le plan ?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 text-left">
+              <p>
+                Cette action va <strong>recréer entièrement la structure</strong> de ton plan (blocs, semaines et séances) à partir d'aujourd'hui.
+              </p>
+              <p>
+                Le plan actuel sera archivé et pourra être restauré si besoin.
+              </p>
+              <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
+                <p className="font-medium">💡 Tu voulais peut-être juste recalibrer ?</p>
+                <p>Pour ajuster les séances futures sans toucher à la structure du plan, utilise plutôt <strong>"Recalibrer mes séances"</strong>.</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Les activités déjà réalisées et les analyses ne seront pas perdues.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={generatePlan}
+              disabled={generating}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {generating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Oui, régénérer le plan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Restore confirmation dialog */}
+      <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restaurer le plan précédent ?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 text-left">
+              <p>Le plan actuel sera archivé et le plan précédent sera remis en place.</p>
+              <p className="text-xs text-muted-foreground">
+                Tes activités réalisées et analyses ne seront pas affectées.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={restorePreviousPlan} disabled={restoring}>
+              {restoring ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Restaurer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

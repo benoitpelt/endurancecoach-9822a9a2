@@ -139,33 +139,21 @@ Deno.serve(async (req) => {
       throw new Error("Erreur de format dans la réponse du générateur. Réessaie.");
     }
 
-    // Delete any existing draft plans for this user
+    // Archive existing active/draft plans instead of deleting them
     const { data: existingPlans } = await supabase
       .from("training_plans")
       .select("id")
       .eq("user_id", userId)
       .in("status", ["draft", "active"]);
 
+    const sourcePlanId = existingPlans?.[0]?.id || null;
+
     if (existingPlans && existingPlans.length > 0) {
       const planIds = existingPlans.map((p: any) => p.id);
-      const { data: existingBlocks } = await supabase
-        .from("training_blocks")
-        .select("id")
-        .in("plan_id", planIds);
-      if (existingBlocks && existingBlocks.length > 0) {
-        const blockIds = existingBlocks.map((b: any) => b.id);
-        const { data: existingWeeks } = await supabase
-          .from("training_weeks")
-          .select("id")
-          .in("block_id", blockIds);
-        if (existingWeeks && existingWeeks.length > 0) {
-          const weekIds = existingWeeks.map((w: any) => w.id);
-          await supabase.from("planned_workouts").delete().in("week_id", weekIds);
-        }
-        await supabase.from("training_weeks").delete().in("block_id", blockIds);
-      }
-      await supabase.from("training_blocks").delete().in("plan_id", planIds);
-      await supabase.from("training_plans").delete().in("id", planIds);
+      await supabase
+        .from("training_plans")
+        .update({ status: "archived" })
+        .in("id", planIds);
     }
 
     // Create the plan
