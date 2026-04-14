@@ -612,6 +612,36 @@ export type Database = {
           },
         ]
       }
+      plan_regenerations: {
+        Row: {
+          created_at: string
+          generated_plan_id: string
+          id: string
+          reason: string | null
+          restored_at: string | null
+          source_plan_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          generated_plan_id: string
+          id?: string
+          reason?: string | null
+          restored_at?: string | null
+          source_plan_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          generated_plan_id?: string
+          id?: string
+          reason?: string | null
+          restored_at?: string | null
+          source_plan_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       planned_workout_versions: {
         Row: {
           adjustment_id: string | null
