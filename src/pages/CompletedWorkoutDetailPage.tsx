@@ -37,7 +37,7 @@ const FATIGUE_LABELS: Record<number, string> = {
 };
 
 export default function CompletedWorkoutDetailPage() {
-  const { workoutId } = useParams<{ workoutId: string }>();
+  const { id: workoutId } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
