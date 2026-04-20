@@ -541,6 +541,42 @@ export type Database = {
         }
         Relationships: []
       }
+      performance_insights: {
+        Row: {
+          created_at: string
+          data_summary: Json | null
+          generated_at: string
+          id: string
+          insights: Json
+          period_days: number
+          recommendations: Json
+          user_id: string
+          vigilance: Json
+        }
+        Insert: {
+          created_at?: string
+          data_summary?: Json | null
+          generated_at?: string
+          id?: string
+          insights?: Json
+          period_days: number
+          recommendations?: Json
+          user_id: string
+          vigilance?: Json
+        }
+        Update: {
+          created_at?: string
+          data_summary?: Json | null
+          generated_at?: string
+          id?: string
+          insights?: Json
+          period_days?: number
+          recommendations?: Json
+          user_id?: string
+          vigilance?: Json
+        }
+        Relationships: []
+      }
       plan_adjustments: {
         Row: {
           adjustment_type: string

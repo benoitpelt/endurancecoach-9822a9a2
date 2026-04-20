@@ -25,6 +25,7 @@ import WeekConstraintsPage from "@/pages/WeekConstraintsPage";
 import WeekProposalPage from "@/pages/WeekProposalPage";
 import AdjustmentHistoryPage from "@/pages/AdjustmentHistoryPage";
 import TrajectoryPage from "@/pages/TrajectoryPage";
+import PerformancePage from "@/pages/PerformancePage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/activities" element={<ProtectedRoute><ActivitiesPage /></ProtectedRoute>} />
             <Route path="/activities/:id" element={<ProtectedRoute><CompletedWorkoutDetailPage /></ProtectedRoute>} />
             <Route path="/trajectory" element={<ProtectedRoute><TrajectoryPage /></ProtectedRoute>} />
+            <Route path="/performance" element={<ProtectedRoute><PerformancePage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

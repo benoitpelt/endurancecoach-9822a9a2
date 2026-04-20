@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   Loader2, User, Target, Calendar, LogOut, Pencil, Layers,
-  ChevronRight, Activity, ArrowRight,
+  ChevronRight, Activity, ArrowRight, TrendingUp,
 } from "lucide-react";
 
 const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -100,17 +100,23 @@ export default function SummaryPage() {
         </button>
 
         {/* Quick links row */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <QuickCard
             icon={Activity}
             label="Activités"
-            sub="Historique réalisé"
+            sub="Historique"
             onClick={() => navigate("/activities")}
+          />
+          <QuickCard
+            icon={TrendingUp}
+            label="Performance"
+            sub="Records & IA"
+            onClick={() => navigate("/performance")}
           />
           <QuickCard
             icon={Target}
             label="Trajectoire"
-            sub="Objectif & réalisme"
+            sub="Réalisme"
             onClick={() => navigate("/trajectory")}
           />
         </div>
