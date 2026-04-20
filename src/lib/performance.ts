@@ -41,7 +41,7 @@ export function filterByPeriod(activities: Activity[], days: number): Activity[]
   return activities.filter((a) => a.start_date && new Date(a.start_date).getTime() >= cutoff);
 }
 
-const isCycling = (a: Activity) => ["cycling", "ride", "virtualride", "ebikeride"].includes((a.sport_type_normalized || "").toLowerCase());
+const isCycling = (a: Activity) => ["bike", "cycling", "ride", "virtualride", "ebikeride"].includes((a.sport_type_normalized || "").toLowerCase());
 const isRun = (a: Activity) => ["run", "running", "trailrun", "virtualrun"].includes((a.sport_type_normalized || "").toLowerCase());
 const isSwim = (a: Activity) => ["swim", "swimming"].includes((a.sport_type_normalized || "").toLowerCase());
 
