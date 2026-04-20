@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   Loader2, User, Target, Calendar, LogOut, Pencil, Layers,
-  ChevronRight, Activity, ArrowRight,
+  ChevronRight, Activity, ArrowRight, TrendingUp,
 } from "lucide-react";
 
 const DAYS_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
