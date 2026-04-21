@@ -100,7 +100,7 @@ export default function SummaryPage() {
         </button>
 
         {/* Quick links row */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2">
           <QuickCard
             icon={Activity}
             label="Activités"
@@ -109,7 +109,7 @@ export default function SummaryPage() {
           />
           <QuickCard
             icon={TrendingUp}
-            label="Performance"
+            label="Perf."
             sub="Records & IA"
             onClick={() => navigate("/performance")}
           />
@@ -265,14 +265,14 @@ function QuickCard({ icon: Icon, label, sub, onClick }: { icon: any; label: stri
   return (
     <button
       onClick={onClick}
-      className="bg-card rounded-xl shadow-card p-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left w-full"
+      className="bg-card rounded-xl shadow-card p-3 flex flex-col items-start gap-2 hover:bg-muted/50 transition-colors text-left w-full min-w-0"
     >
       <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
         <Icon className="h-4 w-4 text-primary" />
       </div>
-      <div>
-        <p className="font-medium text-sm">{label}</p>
-        <p className="text-xs text-muted-foreground">{sub}</p>
+      <div className="min-w-0 w-full">
+        <p className="font-medium text-sm truncate">{label}</p>
+        <p className="text-xs text-muted-foreground truncate">{sub}</p>
       </div>
     </button>
   );
