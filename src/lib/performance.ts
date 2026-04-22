@@ -244,7 +244,7 @@ export type LoadSummary = {
   totalHours: number;
   weeklyAvg: { sessions: number; hours: number };
   bySport: { swim: number; bike: number; run: number; other: number }; // heures
-  weekly: { weekStart: string; sessions: number; hours: number }[];
+  weekly: { weekStart: string; sessions: number; hours: number; isCurrent?: boolean }[];
   longestBySport: { swim: Activity | null; bike: Activity | null; run: Activity | null };
   trend: "up" | "down" | "stable";
 };
