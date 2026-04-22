@@ -311,11 +311,14 @@ export function computeLoadSummary(activities: Activity[], periodDays: number): 
     run: inPeriod.filter(isRun).sort((a, b) => (b.distance_meters || 0) - (a.distance_meters || 0))[0] || null,
   };
 
-  // Tendance : moyenne 4 dernières semaines vs 4 précédentes
+  // Tendance : moyenne 4 dernières semaines COMPLÈTES vs 4 précédentes
+  // (on exclut la semaine en cours pour éviter de conclure à une "baisse" en milieu de semaine)
   let trend: "up" | "down" | "stable" = "stable";
-  if (weekly.length >= 6) {
-    const last4 = weekly.slice(-4).reduce((s, w) => s + w.hours, 0) / 4;
-    const prev4 = weekly.slice(-8, -4).reduce((s, w) => s + w.hours, 0) / Math.max(1, weekly.slice(-8, -4).length);
+  const completedForTrend = weekly.filter((w) => !w.isCurrent);
+  if (completedForTrend.length >= 6) {
+    const last4 = completedForTrend.slice(-4).reduce((s, w) => s + w.hours, 0) / 4;
+    const prevSlice = completedForTrend.slice(-8, -4);
+    const prev4 = prevSlice.reduce((s, w) => s + w.hours, 0) / Math.max(1, prevSlice.length);
     if (prev4 > 0) {
       const ratio = last4 / prev4;
       if (ratio > 1.1) trend = "up";
