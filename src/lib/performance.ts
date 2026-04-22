@@ -273,7 +273,7 @@ export function computeLoadSummary(activities: Activity[], periodDays: number): 
     else bySport.other += h;
   }
 
-  // Agrégat hebdo (12 dernières semaines max)
+  // Agrégat hebdo (12 dernières semaines max), aligné lundi-dimanche
   const weeksMap = new Map<string, { sessions: number; sec: number }>();
   for (const a of inPeriod) {
     if (!a.start_date) continue;
@@ -283,15 +283,26 @@ export function computeLoadSummary(activities: Activity[], periodDays: number): 
     cur.sec += a.moving_time_seconds || a.duration_seconds || 0;
     weeksMap.set(ws, cur);
   }
+  // Marque la semaine en cours comme "incomplète" (à exclure des comparaisons)
+  const currentWeekStart = startOfWeek(new Date()).toISOString().slice(0, 10);
   const weekly = Array.from(weeksMap.entries())
     .sort(([a], [b]) => (a < b ? -1 : 1))
     .slice(-12)
-    .map(([weekStart, v]) => ({ weekStart, sessions: v.sessions, hours: v.sec / 3600 }));
+    .map(([weekStart, v]) => ({
+      weekStart,
+      sessions: v.sessions,
+      hours: v.sec / 3600,
+      isCurrent: weekStart === currentWeekStart,
+    }));
 
-  const weeksCount = Math.max(1, weekly.length);
+  // Moyennes calculées sur les semaines COMPLÈTES uniquement
+  const completedWeeks = weekly.filter((w) => !w.isCurrent);
+  const weeksCount = Math.max(1, completedWeeks.length);
+  const completedSessions = completedWeeks.reduce((s, w) => s + w.sessions, 0);
+  const completedHours = completedWeeks.reduce((s, w) => s + w.hours, 0);
   const weeklyAvg = {
-    sessions: totalSessions / weeksCount,
-    hours: totalHours / weeksCount,
+    sessions: completedSessions / weeksCount,
+    hours: completedHours / weeksCount,
   };
 
   const longestBySport = {
