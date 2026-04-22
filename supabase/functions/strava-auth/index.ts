@@ -6,9 +6,11 @@ const corsHeaders = {
 };
 
 // --- Token encryption helpers (AES-256-GCM) ---
-async function getEncryptionKey(): Promise<CryptoKey | null> {
+async function getEncryptionKey(): Promise<CryptoKey> {
   const hexKey = Deno.env.get("STRAVA_TOKEN_ENCRYPTION_KEY");
-  if (!hexKey || hexKey.length < 64) return null;
+  if (!hexKey || hexKey.length < 64) {
+    throw new Error("STRAVA_TOKEN_ENCRYPTION_KEY is missing or invalid (must be 64 hex chars).");
+  }
   const keyBytes = new Uint8Array(32);
   for (let i = 0; i < 32; i++) keyBytes[i] = parseInt(hexKey.substring(i * 2, i * 2 + 2), 16);
   return crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt", "decrypt"]);
@@ -16,7 +18,6 @@ async function getEncryptionKey(): Promise<CryptoKey | null> {
 
 async function encryptToken(plaintext: string): Promise<string> {
   const key = await getEncryptionKey();
-  if (!key) return plaintext; // fallback: store plaintext if no key
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encoded = new TextEncoder().encode(plaintext);
   const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);

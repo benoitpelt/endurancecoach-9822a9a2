@@ -19,18 +19,21 @@ function normalizeSport(raw: string): string {
 }
 
 // --- Token encryption helpers (AES-256-GCM) ---
-async function getEncryptionKey(): Promise<CryptoKey | null> {
+async function getEncryptionKey(): Promise<CryptoKey> {
   const hexKey = Deno.env.get("STRAVA_TOKEN_ENCRYPTION_KEY");
-  if (!hexKey || hexKey.length < 64) return null;
+  if (!hexKey || hexKey.length < 64) {
+    throw new Error("STRAVA_TOKEN_ENCRYPTION_KEY is missing or invalid (must be 64 hex chars).");
+  }
   const keyBytes = new Uint8Array(32);
   for (let i = 0; i < 32; i++) keyBytes[i] = parseInt(hexKey.substring(i * 2, i * 2 + 2), 16);
   return crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
 async function decryptToken(stored: string): Promise<string> {
-  if (!stored.startsWith("enc:")) return stored; // legacy plaintext
+  if (!stored.startsWith("enc:")) {
+    throw new Error("Stored Strava token is not encrypted. Reconnect Strava to re-encrypt.");
+  }
   const key = await getEncryptionKey();
-  if (!key) throw new Error("Encryption key missing, cannot decrypt tokens.");
   const parts = stored.split(":");
   const iv = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0));
   const cipher = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
@@ -40,7 +43,6 @@ async function decryptToken(stored: string): Promise<string> {
 
 async function encryptToken(plaintext: string): Promise<string> {
   const key = await getEncryptionKey();
-  if (!key) return plaintext;
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encoded = new TextEncoder().encode(plaintext);
   const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
