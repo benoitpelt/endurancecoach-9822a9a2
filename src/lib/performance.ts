@@ -112,6 +112,28 @@ function bestPowerForDuration(activities: Activity[], targetMin: number, label: 
   };
 }
 
+function markIncoherentPowerProxy(shorter: BestEffort, longer: BestEffort): BestEffort {
+  if (shorter.insufficient || longer.insufficient || shorter.value === null || longer.value === null) {
+    return shorter;
+  }
+
+  const allowedFloor = Math.round(longer.value * 0.95);
+  if (shorter.value >= allowedFloor) {
+    return shorter;
+  }
+
+  return {
+    ...shorter,
+    value: null,
+    formatted: "—",
+    date: null,
+    activityName: null,
+    activityId: null,
+    insufficient: true,
+    reason: `Proxy incohérent vs ${longer.label.toLowerCase()} (${longer.value} W) : données courtes insuffisantes pour estimer ${shorter.label.toLowerCase()}`,
+  };
+}
+
 // ========== CAP : meilleure allure ==========
 // Pour les courtes distances (1, 5 km), peu de gens font une course de 1 km isolée.
 // On accepte les sorties ≥ distance cible comme proxy d'allure soutenue.
@@ -185,12 +207,20 @@ function bestSwimPaceForDistance(activities: Activity[], targetM: number, label:
 }
 
 export function computeBestEfforts(activities: Activity[]) {
+  const powerPeak = bestPowerPeak(activities, "Pic puissance");
+  const power60 = bestPowerForDuration(activities, 60, "Puissance ~60 min");
+  const power20 = markIncoherentPowerProxy(bestPowerForDuration(activities, 20, "Puissance ~20 min"), power60);
+  const power5 = markIncoherentPowerProxy(
+    bestPowerForDuration(activities, 5, "Puissance ~5 min"),
+    power20.value !== null ? power20 : power60,
+  );
+
   return {
     cycling: [
-      bestPowerPeak(activities, "Pic puissance"),
-      bestPowerForDuration(activities, 5, "Puissance ~5 min"),
-      bestPowerForDuration(activities, 20, "Puissance ~20 min"),
-      bestPowerForDuration(activities, 60, "Puissance ~60 min"),
+      powerPeak,
+      power5,
+      power20,
+      power60,
     ],
     running: [
       bestRunPaceForDistance(activities, 1, "Allure ~1 km"),
