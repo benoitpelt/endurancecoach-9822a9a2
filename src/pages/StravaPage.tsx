@@ -157,6 +157,24 @@ export default function StravaPage() {
     }
   }, [user, loadStatus, searchParams]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshStatus = () => {
+      if (document.visibilityState === "visible" && !searchParams.get("code")) {
+        loadStatus();
+      }
+    };
+
+    window.addEventListener("focus", refreshStatus);
+    document.addEventListener("visibilitychange", refreshStatus);
+
+    return () => {
+      window.removeEventListener("focus", refreshStatus);
+      document.removeEventListener("visibilitychange", refreshStatus);
+    };
+  }, [user, loadStatus, searchParams]);
+
   const handleOAuthCallback = async (code: string) => {
     try {
       const token = await getToken();
@@ -181,6 +199,7 @@ export default function StravaPage() {
 
   const connectStrava = async () => {
     try {
+      setError(null);
       const token = await getToken();
       const res = await supabase.functions.invoke("strava-auth", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -191,8 +210,21 @@ export default function StravaPage() {
       const redirectUri = `${window.location.origin}/strava`;
       const scope = "read,activity:read_all";
       const url = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&approval_prompt=auto`;
+
+      const popup = window.open(url, "_blank", "noopener,noreferrer");
+      if (popup) {
+        toast.info("Strava s'ouvre dans un nouvel onglet. Reviens ici après validation.");
+        return;
+      }
+
+      if (window.top && window.top !== window) {
+        window.top.location.href = url;
+        return;
+      }
+
       window.location.href = url;
     } catch (e) {
+      console.error(e);
       toast.error("Impossible d'initier la connexion Strava.");
     }
   };
