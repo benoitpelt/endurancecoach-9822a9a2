@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,6 +85,8 @@ export default function StravaPage() {
   const [error, setError] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [recalibrating, setRecalibrating] = useState(false);
+  const processedCodeRef = useRef<string | null>(null);
+  const exchangeInFlightRef = useRef(false);
 
   const getToken = async () => {
     const { data } = await supabase.auth.getSession();
@@ -145,7 +147,7 @@ export default function StravaPage() {
   // Handle OAuth callback
   useEffect(() => {
     const code = searchParams.get("code");
-    if (code && user) {
+    if (code && user && processedCodeRef.current !== code && !exchangeInFlightRef.current) {
       setPageState("exchanging");
       handleOAuthCallback(code);
     }
@@ -176,7 +178,11 @@ export default function StravaPage() {
   }, [user, loadStatus, searchParams]);
 
   const handleOAuthCallback = async (code: string) => {
+    if (exchangeInFlightRef.current || processedCodeRef.current === code) return;
+
     try {
+      exchangeInFlightRef.current = true;
+      processedCodeRef.current = code;
       const token = await getToken();
       if (!token) throw new Error("Session expirée.");
       const res = await supabase.functions.invoke("strava-auth", {
@@ -191,9 +197,14 @@ export default function StravaPage() {
       await loadStatus();
     } catch (e: any) {
       console.error(e);
-      setError(e.message || "Erreur lors de la connexion Strava.");
+      const message = typeof e?.message === "string" && e.message.includes("AuthorizationCode")
+        ? "Le code de connexion Strava a déjà été utilisé. Réessaie la connexion."
+        : e.message || "Erreur lors de la connexion Strava.";
+      setError(message);
       setPageState("not_connected");
       setSearchParams({});
+    } finally {
+      exchangeInFlightRef.current = false;
     }
   };
 
