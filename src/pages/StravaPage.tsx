@@ -198,8 +198,13 @@ export default function StravaPage() {
   };
 
   const connectStrava = async () => {
+    let popup: Window | null = null;
+
     try {
       setError(null);
+
+      popup = window.open("", "_blank");
+
       const token = await getToken();
       const res = await supabase.functions.invoke("strava-auth", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -211,8 +216,9 @@ export default function StravaPage() {
       const scope = "read,activity:read_all";
       const url = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&approval_prompt=auto`;
 
-      const popup = window.open(url, "_blank", "noopener,noreferrer");
       if (popup) {
+        popup.opener = null;
+        popup.location.replace(url);
         toast.info("Strava s'ouvre dans un nouvel onglet. Reviens ici après validation.");
         return;
       }
@@ -224,6 +230,9 @@ export default function StravaPage() {
 
       window.location.href = url;
     } catch (e) {
+      if (popup && !popup.closed) {
+        popup.close();
+      }
       console.error(e);
       toast.error("Impossible d'initier la connexion Strava.");
     }
