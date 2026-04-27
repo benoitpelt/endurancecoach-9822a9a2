@@ -269,9 +269,14 @@ function PerformancesBlock({ performances }: { performances: any }) {
   }
   const sportLabels: Record<string, string> = { triathlon: "Triathlon", running: "Course à pied", cycling: "Vélo", swimming: "Natation" };
   const fieldLabels: Record<string, string> = {
-    formats_done: "Formats réalisés", longest_format: "Plus long format", reference_time: "Temps de référence",
+    longest_format: "Plus long format",
+    longest_run: "Plus longue course",
+    longest_ride: "Plus longue sortie vélo",
+    longest_swim: "Plus longue natation",
+    // Compatibilité ascendante avec anciens profils
+    formats_done: "Formats réalisés", reference_time: "Temps de référence",
     best_5k: "Meilleur 5 km", best_10k: "Meilleur 10 km", best_half: "Meilleur semi", best_marathon: "Meilleur marathon", recent_reference: "Chrono récent",
-    longest_ride: "Plus longue sortie", events: "Événements", level_reference: "Repère de niveau",
+    events: "Événements", level_reference: "Repère de niveau",
     best_100m: "Meilleur 100 m", other_reference: "Autre repère",
   };
 
