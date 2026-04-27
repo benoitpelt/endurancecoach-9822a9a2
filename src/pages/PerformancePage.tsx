@@ -323,16 +323,34 @@ function SportLegend({ label, hours, color }: { label: string; hours: number; co
   );
 }
 
-function WeeklyBars({ weekly }: { weekly: { weekStart: string; sessions: number; hours: number }[] }) {
+function WeeklyBars({ weekly }: { weekly: { weekStart: string; sessions: number; hours: number; isCurrent?: boolean }[] }) {
   const maxH = Math.max(1, ...weekly.map((w) => w.hours));
   return (
-    <div className="flex items-end gap-1 h-24">
-      {weekly.map((w) => (
-        <div key={w.weekStart} className="flex-1 flex flex-col items-center gap-1">
-          <div className="w-full bg-primary/80 rounded-t hover:bg-primary transition-colors" style={{ height: `${(w.hours / maxH) * 100}%`, minHeight: "2px" }} title={`${w.hours.toFixed(1)} h · ${w.sessions} séances`} />
-          <span className="text-[9px] text-muted-foreground">{new Date(w.weekStart).toLocaleDateString("fr-FR", { day: "numeric", month: "numeric" })}</span>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>0 h</span>
+        <span>Échelle max : {maxH.toFixed(1)} h</span>
+      </div>
+      <div className="overflow-x-auto pb-1">
+        <div className="flex items-end gap-2 min-w-max h-32">
+          {weekly.map((w) => {
+            const height = w.hours > 0 ? Math.max(10, (w.hours / maxH) * 100) : 2;
+            return (
+              <div key={w.weekStart} className="w-10 h-full flex flex-col items-center justify-end gap-1">
+                <span className="text-[10px] font-medium tabular-nums">{w.hours.toFixed(1)}h</span>
+                <div
+                  className={`w-full rounded-t transition-colors ${w.isCurrent ? "bg-primary/50" : "bg-primary/85 hover:bg-primary"}`}
+                  style={{ height: `${height}%` }}
+                  title={`${w.hours.toFixed(1)} h · ${w.sessions} séances${w.isCurrent ? " · semaine en cours" : ""}`}
+                />
+                <span className="text-[9px] text-muted-foreground tabular-nums">
+                  {new Date(`${w.weekStart}T00:00:00`).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
+                </span>
+              </div>
+            );
+          })}
         </div>
-      ))}
+      </div>
     </div>
   );
 }
