@@ -249,12 +249,16 @@ export type LoadSummary = {
   trend: "up" | "down" | "stable";
 };
 
-function startOfWeek(d: Date): Date {
-  const x = new Date(d);
-  const day = (x.getDay() + 6) % 7; // lundi = 0
-  x.setHours(0, 0, 0, 0);
-  x.setDate(x.getDate() - day);
-  return x;
+function startOfWeek(dateStr: string): string | null {
+  const isoDay = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!isoDay) return null;
+
+  const d = new Date(Date.UTC(Number(isoDay[1]), Number(isoDay[2]) - 1, Number(isoDay[3])));
+  if (Number.isNaN(d.getTime())) return null;
+
+  const day = (d.getUTCDay() + 6) % 7; // lundi = 0
+  d.setUTCDate(d.getUTCDate() - day);
+  return d.toISOString().slice(0, 10);
 }
 
 export function computeLoadSummary(activities: Activity[], periodDays: number): LoadSummary {
@@ -277,14 +281,15 @@ export function computeLoadSummary(activities: Activity[], periodDays: number): 
   const weeksMap = new Map<string, { sessions: number; sec: number }>();
   for (const a of inPeriod) {
     if (!a.start_date) continue;
-    const ws = startOfWeek(new Date(a.start_date)).toISOString().slice(0, 10);
+    const ws = startOfWeek(a.start_date);
+    if (!ws) continue;
     const cur = weeksMap.get(ws) || { sessions: 0, sec: 0 };
     cur.sessions += 1;
     cur.sec += a.moving_time_seconds || a.duration_seconds || 0;
     weeksMap.set(ws, cur);
   }
   // Marque la semaine en cours comme "incomplète" (à exclure des comparaisons)
-  const currentWeekStart = startOfWeek(new Date()).toISOString().slice(0, 10);
+  const currentWeekStart = startOfWeek(new Date().toISOString()) || "";
   const weekly = Array.from(weeksMap.entries())
     .sort(([a], [b]) => (a < b ? -1 : 1))
     .slice(-12)
