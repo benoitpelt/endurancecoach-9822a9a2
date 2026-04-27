@@ -33,7 +33,21 @@ export default function StepVolumes({ data, onChange }: Props) {
       </div>
 
       <div className="bg-card rounded-xl shadow-card p-5 space-y-4">
-        <h3 className="font-heading font-semibold">Volume moyen par semaine</h3>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="font-heading font-semibold">Volume moyen par semaine</h3>
+          <div className="text-right">
+            <div className="text-xs text-muted-foreground">Total / semaine</div>
+            <div className="text-lg font-heading font-bold text-primary">
+              {(() => {
+                const total = ["swim", "bike", "run"].reduce(
+                  (s, k) => s + (Number(data.weekly_volume_hours[k]) || 0),
+                  0
+                );
+                return total > 0 ? `${total.toFixed(1)} h` : "—";
+              })()}
+            </div>
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { key: "swim", label: "Natation (h)" },
@@ -44,6 +58,7 @@ export default function StepVolumes({ data, onChange }: Props) {
               <Label className="text-sm">{s.label}</Label>
               <Input
                 type="number"
+                inputMode="decimal"
                 min={0}
                 step={0.5}
                 placeholder="ex: 2.5"
@@ -53,11 +68,15 @@ export default function StepVolumes({ data, onChange }: Props) {
             </div>
           ))}
         </div>
+        <p className="text-xs text-muted-foreground">
+          Indique tes heures moyennes par discipline — le total hebdo se calcule automatiquement.
+        </p>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 pt-2 border-t border-border/60">
           <Label className="text-sm">Nombre total de séances par semaine</Label>
           <Input
             type="number"
+            inputMode="numeric"
             min={0}
             max={20}
             placeholder="ex: 6"
