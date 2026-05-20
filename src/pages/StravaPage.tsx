@@ -640,6 +640,74 @@ export default function StravaPage() {
               )}
             </div>
 
+            {/* Enrichissement détaillé (splits + laps) */}
+            <div className="bg-card rounded-xl shadow-card p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-heading font-bold">Enrichir le détail des activités</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Récupère le découpage <strong>km par km</strong> et les <strong>tours</strong> de chaque séance.
+                    Utile pour analyser tes allures par segment et tes séances structurées.
+                  </p>
+                </div>
+              </div>
+
+              {backfillState && (
+                <div className="bg-secondary/50 rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">
+                      {backfillState.done
+                        ? "Terminé"
+                        : backfillState.rateLimited
+                          ? "Limite Strava atteinte"
+                          : "Enrichissement en cours…"}
+                    </span>
+                    <span className="font-mono">
+                      {backfillState.processed}{backfillState.total > 0 ? ` / ${backfillState.total}` : ""}
+                    </span>
+                  </div>
+                  {backfillState.total > 0 && (
+                    <div className="h-1.5 bg-background rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${Math.min(100, (backfillState.processed / backfillState.total) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                  {backfillState.errors > 0 && (
+                    <p className="text-xs text-warning">{backfillState.errors} activité(s) ignorée(s).</p>
+                  )}
+                  {backfillState.rateLimited && (
+                    <p className="text-xs text-muted-foreground">
+                      Strava limite à 100 requêtes / 15 min. Reviens dans un quart d'heure pour finir.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <Button
+                onClick={runBackfill}
+                disabled={backfillState?.running}
+                className="gap-2"
+                variant={backfillState?.done ? "outline" : "default"}
+              >
+                {backfillState?.running
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Sparkles className="h-4 w-4" />}
+                {backfillState?.running
+                  ? "Enrichissement en cours…"
+                  : backfillState?.done
+                    ? "Relancer l'enrichissement"
+                    : "Lancer l'enrichissement détaillé"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Les nouvelles activités importées par la suite seront automatiquement enrichies.
+              </p>
+            </div>
+
             {/* Decision block */}
             {synthesis.has_existing_plan && (
               <div className="bg-card rounded-xl shadow-card p-6 space-y-4">
