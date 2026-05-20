@@ -47,6 +47,10 @@ export default function CompletedWorkoutDetailPage() {
   const [detailedAnalysis, setDetailedAnalysis] = useState<any>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [showDetailed, setShowDetailed] = useState(false);
+  const [activityDetails, setActivityDetails] = useState<{ splits_metric: any[] | null; laps: any[] | null; details_fetched_at: string | null } | null>(null);
+  const [showSplits, setShowSplits] = useState(true);
+  const [showLaps, setShowLaps] = useState(false);
+  
   
   // Feedback form
   const [showFeedback, setShowFeedback] = useState(false);
