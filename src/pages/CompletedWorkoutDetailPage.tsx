@@ -529,6 +529,7 @@ function SplitsTable({ splits, sport }: { splits: any[]; sport: string }) {
           <th className="text-right px-3 py-2 font-medium">Temps</th>
           <th className="text-right px-3 py-2 font-medium">Allure</th>
           <th className="text-right px-3 py-2 font-medium">FC</th>
+          {sport === "bike" && <th className="text-right px-3 py-2 font-medium">Puiss.</th>}
           <th className="text-right px-3 py-2 font-medium">D+</th>
         </tr>
       </thead>
@@ -539,6 +540,9 @@ function SplitsTable({ splits, sport }: { splits: any[]; sport: string }) {
             <td className="px-3 py-2 text-right tabular-nums">{fmtDuration(s.moving_time ?? s.elapsed_time)}</td>
             <td className="px-3 py-2 text-right tabular-nums">{fmtPaceFromSpeed(s.average_speed, sport)}</td>
             <td className="px-3 py-2 text-right tabular-nums">{s.average_heartrate ? `${Math.round(s.average_heartrate)}` : "—"}</td>
+            {sport === "bike" && (
+              <td className="px-3 py-2 text-right tabular-nums">{s.average_watts ?? s.avg_watts ? `${Math.round(s.average_watts ?? s.avg_watts)} W` : "—"}</td>
+            )}
             <td className="px-3 py-2 text-right tabular-nums">{s.elevation_difference != null ? `${Math.round(s.elevation_difference)}m` : "—"}</td>
           </tr>
         ))}
@@ -557,6 +561,7 @@ function LapsTable({ laps, sport }: { laps: any[]; sport: string }) {
           <th className="text-right px-3 py-2 font-medium">Temps</th>
           <th className="text-right px-3 py-2 font-medium">Allure</th>
           <th className="text-right px-3 py-2 font-medium">FC</th>
+          {sport === "bike" && <th className="text-right px-3 py-2 font-medium">Puiss.</th>}
         </tr>
       </thead>
       <tbody>
@@ -567,6 +572,9 @@ function LapsTable({ laps, sport }: { laps: any[]; sport: string }) {
             <td className="px-3 py-2 text-right tabular-nums">{fmtDuration(l.moving_time ?? l.elapsed_time)}</td>
             <td className="px-3 py-2 text-right tabular-nums">{fmtPaceFromSpeed(l.average_speed, sport)}</td>
             <td className="px-3 py-2 text-right tabular-nums">{l.average_heartrate ? `${Math.round(l.average_heartrate)}` : "—"}</td>
+            {sport === "bike" && (
+              <td className="px-3 py-2 text-right tabular-nums">{l.average_watts ?? l.avg_watts ? `${Math.round(l.average_watts ?? l.avg_watts)} W` : "—"}</td>
+            )}
           </tr>
         ))}
       </tbody>
