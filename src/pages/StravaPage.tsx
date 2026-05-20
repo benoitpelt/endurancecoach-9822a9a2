@@ -326,6 +326,53 @@ export default function StravaPage() {
     }
   };
 
+  const runBackfill = async () => {
+    try {
+      setBackfillState({ running: true, processed: 0, total: 0, errors: 0, rateLimited: false, done: false });
+      let totalProcessed = 0;
+      let totalErrors = 0;
+      let total = 0;
+
+      // Boucle : on rappelle tant qu'il reste des activités à enrichir
+      for (let i = 0; i < 50; i++) {
+        const token = await getToken();
+        if (!token) throw new Error("Session expirée.");
+        const res = await supabase.functions.invoke("strava-backfill-details", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.error || res.data?.error) throw new Error(res.data?.error || "Erreur d'enrichissement.");
+        const data = res.data;
+        totalProcessed += data.processed || 0;
+        totalErrors += data.errors || 0;
+        if (i === 0) total = (data.total_before || 0);
+
+        setBackfillState({
+          running: !data.done && !data.rate_limited,
+          processed: totalProcessed,
+          total,
+          errors: totalErrors,
+          rateLimited: !!data.rate_limited,
+          done: !!data.done,
+        });
+
+        if (data.done) {
+          toast.success(`Enrichissement terminé : ${totalProcessed} activité(s) détaillée(s).`);
+          break;
+        }
+        if (data.rate_limited) {
+          toast.info("Limite Strava atteinte. Relance dans 15 min pour continuer.");
+          break;
+        }
+        // Petit délai entre lots pour soulager Strava
+        await new Promise(r => setTimeout(r, 500));
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Erreur lors de l'enrichissement.");
+      setBackfillState(prev => prev ? { ...prev, running: false } : null);
+    }
+  };
+
   const formatDate = (d: string | null) => {
     if (!d) return "—";
     try { return format(new Date(d), "d MMM yyyy à HH:mm", { locale: fr }); } catch { return d; }
