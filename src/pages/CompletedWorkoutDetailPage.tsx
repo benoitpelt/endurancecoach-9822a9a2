@@ -235,6 +235,43 @@ export default function CompletedWorkoutDetailPage() {
           {workout.calories && <MetricCard icon={Target} label="Calories" value={`${Math.round(Number(workout.calories))}`} />}
         </div>
 
+        {/* Splits & laps */}
+        {activityDetails && ((activityDetails.splits_metric?.length ?? 0) > 0 || (activityDetails.laps?.length ?? 0) > 0) && (
+          <div className="bg-card rounded-xl shadow-card overflow-hidden">
+            <div className="flex items-center border-b border-border">
+              {(activityDetails.splits_metric?.length ?? 0) > 0 && (
+                <button
+                  onClick={() => { setShowSplits(true); setShowLaps(false); }}
+                  className={`flex-1 px-4 py-3 text-sm font-medium ${showSplits ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+                >
+                  Splits / km ({activityDetails.splits_metric!.length})
+                </button>
+              )}
+              {(activityDetails.laps?.length ?? 0) > 0 && (
+                <button
+                  onClick={() => { setShowLaps(true); setShowSplits(false); }}
+                  className={`flex-1 px-4 py-3 text-sm font-medium ${showLaps ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+                >
+                  Laps ({activityDetails.laps!.length})
+                </button>
+              )}
+            </div>
+            <div className="overflow-x-auto">
+              {showSplits && activityDetails.splits_metric && (
+                <SplitsTable splits={activityDetails.splits_metric} sport={workout.sport_type} />
+              )}
+              {showLaps && activityDetails.laps && (
+                <LapsTable laps={activityDetails.laps} sport={workout.sport_type} />
+              )}
+            </div>
+          </div>
+        )}
+        {workout.imported_activity_id && activityDetails && !activityDetails.details_fetched_at && (
+          <div className="bg-muted/40 border border-border rounded-xl p-4 text-xs text-muted-foreground">
+            Détails km/lap non encore importés. Lance "Enrichir le détail des activités" depuis la page Strava.
+          </div>
+        )}
+
         {/* Short analysis */}
         {workout.short_analysis && (
           <div className="bg-gradient-subtle rounded-xl p-5 space-y-2">
