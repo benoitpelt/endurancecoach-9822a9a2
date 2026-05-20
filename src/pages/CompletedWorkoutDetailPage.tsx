@@ -493,3 +493,83 @@ function MetricCard({ icon: Icon, label, value }: { icon: any; label: string; va
     </div>
   );
 }
+
+function fmtDuration(sec: number | null | undefined): string {
+  if (!sec && sec !== 0) return "—";
+  const s = Math.round(sec);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  if (h > 0) return `${h}h${String(m).padStart(2, "0")}`;
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
+
+function fmtPaceFromSpeed(mps: number | null | undefined, sport: string): string {
+  if (!mps || mps <= 0) return "—";
+  if (sport === "bike") return `${(mps * 3.6).toFixed(1)} km/h`;
+  // run / swim → min/km (swim usually min/100m but we keep min/km consistent unless swim)
+  if (sport === "swim") {
+    const secPer100 = 100 / mps;
+    const m = Math.floor(secPer100 / 60);
+    const s = Math.round(secPer100 % 60);
+    return `${m}:${String(s).padStart(2, "0")} /100m`;
+  }
+  const secPerKm = 1000 / mps;
+  const m = Math.floor(secPerKm / 60);
+  const s = Math.round(secPerKm % 60);
+  return `${m}:${String(s).padStart(2, "0")} /km`;
+}
+
+function SplitsTable({ splits, sport }: { splits: any[]; sport: string }) {
+  return (
+    <table className="w-full text-xs">
+      <thead className="bg-muted/40 text-muted-foreground">
+        <tr>
+          <th className="text-left px-3 py-2 font-medium">Km</th>
+          <th className="text-right px-3 py-2 font-medium">Temps</th>
+          <th className="text-right px-3 py-2 font-medium">Allure</th>
+          <th className="text-right px-3 py-2 font-medium">FC</th>
+          <th className="text-right px-3 py-2 font-medium">D+</th>
+        </tr>
+      </thead>
+      <tbody>
+        {splits.map((s, i) => (
+          <tr key={i} className="border-t border-border">
+            <td className="px-3 py-2 font-medium">{s.split ?? i + 1}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{fmtDuration(s.moving_time ?? s.elapsed_time)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{fmtPaceFromSpeed(s.average_speed, sport)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{s.average_heartrate ? `${Math.round(s.average_heartrate)}` : "—"}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{s.elevation_difference != null ? `${Math.round(s.elevation_difference)}m` : "—"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function LapsTable({ laps, sport }: { laps: any[]; sport: string }) {
+  return (
+    <table className="w-full text-xs">
+      <thead className="bg-muted/40 text-muted-foreground">
+        <tr>
+          <th className="text-left px-3 py-2 font-medium">Lap</th>
+          <th className="text-right px-3 py-2 font-medium">Distance</th>
+          <th className="text-right px-3 py-2 font-medium">Temps</th>
+          <th className="text-right px-3 py-2 font-medium">Allure</th>
+          <th className="text-right px-3 py-2 font-medium">FC</th>
+        </tr>
+      </thead>
+      <tbody>
+        {laps.map((l, i) => (
+          <tr key={i} className="border-t border-border">
+            <td className="px-3 py-2 font-medium">{l.lap_index ?? i + 1}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{l.distance ? `${(l.distance / 1000).toFixed(2)} km` : "—"}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{fmtDuration(l.moving_time ?? l.elapsed_time)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{fmtPaceFromSpeed(l.average_speed, sport)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{l.average_heartrate ? `${Math.round(l.average_heartrate)}` : "—"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
