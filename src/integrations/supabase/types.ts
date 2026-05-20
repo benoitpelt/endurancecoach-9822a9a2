@@ -473,16 +473,19 @@ export type Database = {
           avg_speed: number | null
           calories: number | null
           created_at: string
+          details_fetched_at: string | null
           distance_meters: number | null
           duration_seconds: number | null
           elevation_gain_meters: number | null
           id: string
+          laps: Json | null
           max_heartrate: number | null
           max_power: number | null
           max_speed: number | null
           moving_time_seconds: number | null
           name: string | null
           raw_payload: Json | null
+          splits_metric: Json | null
           sport_type_normalized: string | null
           sport_type_raw: string | null
           start_date: string | null
@@ -497,16 +500,19 @@ export type Database = {
           avg_speed?: number | null
           calories?: number | null
           created_at?: string
+          details_fetched_at?: string | null
           distance_meters?: number | null
           duration_seconds?: number | null
           elevation_gain_meters?: number | null
           id?: string
+          laps?: Json | null
           max_heartrate?: number | null
           max_power?: number | null
           max_speed?: number | null
           moving_time_seconds?: number | null
           name?: string | null
           raw_payload?: Json | null
+          splits_metric?: Json | null
           sport_type_normalized?: string | null
           sport_type_raw?: string | null
           start_date?: string | null
@@ -521,16 +527,19 @@ export type Database = {
           avg_speed?: number | null
           calories?: number | null
           created_at?: string
+          details_fetched_at?: string | null
           distance_meters?: number | null
           duration_seconds?: number | null
           elevation_gain_meters?: number | null
           id?: string
+          laps?: Json | null
           max_heartrate?: number | null
           max_power?: number | null
           max_speed?: number | null
           moving_time_seconds?: number | null
           name?: string | null
           raw_payload?: Json | null
+          splits_metric?: Json | null
           sport_type_normalized?: string | null
           sport_type_raw?: string | null
           start_date?: string | null

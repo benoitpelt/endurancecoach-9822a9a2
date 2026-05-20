@@ -218,6 +218,39 @@ Deno.serve(async (req) => {
       throw new Error("Erreur lors de l'insertion des activités.");
     }
 
+    // Récupère les détails (splits_metric + laps) pour les nouvelles activités exploitées.
+    // Limité à 20 pour éviter de saturer le rate limit Strava lors d'un sync.
+    const toEnrich = (insertedActivities || [])
+      .filter((a: any) => EXPLOITED_SPORTS.has(a.sport_type_normalized))
+      .slice(0, 20);
+
+    for (let i = 0; i < toEnrich.length; i++) {
+      const act = toEnrich[i];
+      try {
+        const detailRes = await fetch(
+          `https://www.strava.com/api/v3/activities/${act.strava_id}?include_all_efforts=false`,
+          { headers: { Authorization: `Bearer ${accessToken}` } },
+        );
+        if (detailRes.status === 429) {
+          console.warn("Strava rate limit hit during sync enrichment, stopping.");
+          break;
+        }
+        if (detailRes.ok) {
+          const detail = await detailRes.json();
+          await supabase.from("imported_activities").update({
+            splits_metric: detail.splits_metric ?? null,
+            laps: detail.laps ?? null,
+            details_fetched_at: new Date().toISOString(),
+          }).eq("id", act.id);
+        }
+      } catch (e) {
+        console.error("Detail fetch failed for", act.strava_id, e);
+      }
+      if (i < toEnrich.length - 1) {
+        await new Promise(r => setTimeout(r, 800));
+      }
+    }
+
     // Get planned workouts for matching (next 7 days back and 2 days forward from each activity)
     const activityDates = (insertedActivities || [])
       .filter((a: any) => a.start_date)
