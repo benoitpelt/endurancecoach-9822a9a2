@@ -98,6 +98,16 @@ export default function CompletedWorkoutDetailPage() {
         .eq("analysis_type", "detailed")
         .maybeSingle();
       if (da) setDetailedAnalysis(da);
+
+      // Load splits & laps from imported_activities
+      if (cw.imported_activity_id) {
+        const { data: ia } = await supabase
+          .from("imported_activities")
+          .select("splits_metric, laps, details_fetched_at")
+          .eq("id", cw.imported_activity_id)
+          .maybeSingle();
+        if (ia) setActivityDetails(ia as any);
+      }
     } catch (e) {
       console.error(e);
     } finally {
