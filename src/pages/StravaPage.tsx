@@ -85,6 +85,14 @@ export default function StravaPage() {
   const [error, setError] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [recalibrating, setRecalibrating] = useState(false);
+  const [backfillState, setBackfillState] = useState<{
+    running: boolean;
+    processed: number;
+    total: number;
+    errors: number;
+    rateLimited: boolean;
+    done: boolean;
+  } | null>(null);
   const processedCodeRef = useRef<string | null>(null);
   const exchangeInFlightRef = useRef(false);
 
