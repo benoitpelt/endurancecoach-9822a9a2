@@ -367,6 +367,20 @@ export type Database = {
             foreignKeyName: "completed_workouts_imported_activity_id_fkey"
             columns: ["imported_activity_id"]
             isOneToOne: true
+            referencedRelation: "activity_laps"
+            referencedColumns: ["activity_id"]
+          },
+          {
+            foreignKeyName: "completed_workouts_imported_activity_id_fkey"
+            columns: ["imported_activity_id"]
+            isOneToOne: true
+            referencedRelation: "activity_splits"
+            referencedColumns: ["activity_id"]
+          },
+          {
+            foreignKeyName: "completed_workouts_imported_activity_id_fkey"
+            columns: ["imported_activity_id"]
+            isOneToOne: true
             referencedRelation: "imported_activities"
             referencedColumns: ["id"]
           },
@@ -1262,7 +1276,49 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      activity_laps: {
+        Row: {
+          activity_id: string | null
+          avg_cadence: number | null
+          avg_heartrate: number | null
+          avg_speed_ms: number | null
+          avg_watts: number | null
+          distance_m: number | null
+          elapsed_time_sec: number | null
+          elevation_gain_m: number | null
+          end_index: number | null
+          lap_index: number | null
+          lap_name: string | null
+          max_heartrate: number | null
+          max_speed_ms: number | null
+          moving_time_sec: number | null
+          name: string | null
+          sport_type_normalized: string | null
+          start_date: string | null
+          start_index: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      activity_splits: {
+        Row: {
+          activity_id: string | null
+          avg_heartrate: number | null
+          avg_speed_ms: number | null
+          avg_watts: number | null
+          distance_m: number | null
+          elapsed_time_sec: number | null
+          elevation_diff_m: number | null
+          km: number | null
+          moving_time_sec: number | null
+          name: string | null
+          pace_zone: number | null
+          sport_type_normalized: string | null
+          start_date: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
