@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, ArrowLeft, CheckCircle2, AlertTriangle, HelpCircle, Dumbbell, Clock, Ruler, Zap, Heart, Mountain, Target, ChevronDown, ChevronUp, Send, MessageSquare } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle2, AlertTriangle, HelpCircle, Dumbbell, Clock, Ruler, Zap, Heart, Mountain, Target, ChevronDown, ChevronUp, Send, MessageSquare, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -58,6 +59,26 @@ export default function CompletedWorkoutDetailPage() {
   const [fatigue, setFatigue] = useState<number>(3);
   const [comment, setComment] = useState("");
   const [savingFeedback, setSavingFeedback] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteActivity = async () => {
+    if (!workoutId || !user) return;
+    try {
+      setDeleting(true);
+      await supabase.from("completed_workout_feedback").delete().eq("completed_workout_id", workoutId);
+      await supabase.from("workout_analyses").delete().eq("completed_workout_id", workoutId);
+      const { error } = await supabase.from("completed_workouts").delete().eq("id", workoutId).eq("user_id", user.id);
+      if (error) throw error;
+      if (workout?.imported_activity_id) {
+        await supabase.from("imported_activities").delete().eq("id", workout.imported_activity_id).eq("user_id", user.id);
+      }
+      toast.success("Activité supprimée.");
+      navigate("/activities");
+    } catch (e: any) {
+      toast.error(e.message || "Erreur lors de la suppression.");
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (!user || !workoutId) return;
@@ -197,9 +218,32 @@ export default function CompletedWorkoutDetailPage() {
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
-        <Button variant="ghost" onClick={() => navigate("/activities")} className="gap-2">
-          <ArrowLeft className="h-4 w-4" /> Retour aux activités
-        </Button>
+        <div className="flex items-center justify-between gap-2">
+          <Button variant="ghost" onClick={() => navigate("/activities")} className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Retour aux activités
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10">
+                <Trash2 className="h-4 w-4" /> Supprimer
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer cette activité ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  L'activité, son ressenti et ses analyses seront supprimés définitivement. Si elle vient de Strava, elle pourra être réimportée lors d'une prochaine synchronisation.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={deleteActivity} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
 
         {/* Header */}
         <div className="bg-card rounded-xl shadow-card p-6 space-y-4">
