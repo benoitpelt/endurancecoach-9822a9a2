@@ -218,9 +218,32 @@ export default function CompletedWorkoutDetailPage() {
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
-        <Button variant="ghost" onClick={() => navigate("/activities")} className="gap-2">
-          <ArrowLeft className="h-4 w-4" /> Retour aux activités
-        </Button>
+        <div className="flex items-center justify-between gap-2">
+          <Button variant="ghost" onClick={() => navigate("/activities")} className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Retour aux activités
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10">
+                <Trash2 className="h-4 w-4" /> Supprimer
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer cette activité ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  L'activité, son ressenti et ses analyses seront supprimés définitivement. Si elle vient de Strava, elle pourra être réimportée lors d'une prochaine synchronisation.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={deleteActivity} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
 
         {/* Header */}
         <div className="bg-card rounded-xl shadow-card p-6 space-y-4">
