@@ -59,6 +59,26 @@ export default function CompletedWorkoutDetailPage() {
   const [fatigue, setFatigue] = useState<number>(3);
   const [comment, setComment] = useState("");
   const [savingFeedback, setSavingFeedback] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteActivity = async () => {
+    if (!workoutId || !user) return;
+    try {
+      setDeleting(true);
+      await supabase.from("completed_workout_feedback").delete().eq("completed_workout_id", workoutId);
+      await supabase.from("workout_analyses").delete().eq("completed_workout_id", workoutId);
+      const { error } = await supabase.from("completed_workouts").delete().eq("id", workoutId).eq("user_id", user.id);
+      if (error) throw error;
+      if (workout?.imported_activity_id) {
+        await supabase.from("imported_activities").delete().eq("id", workout.imported_activity_id).eq("user_id", user.id);
+      }
+      toast.success("Activité supprimée.");
+      navigate("/activities");
+    } catch (e: any) {
+      toast.error(e.message || "Erreur lors de la suppression.");
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (!user || !workoutId) return;
