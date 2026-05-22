@@ -77,12 +77,15 @@ Deno.serve(async (req) => {
     const { data, error } = await query;
     if (error) throw error;
 
+    const cacheBuster = url.searchParams.get("t");
+
     return new Response(
       JSON.stringify({
         success: true,
         period_days: days,
         count: data?.length ?? 0,
         server_time: new Date().toISOString(),
+        cache_buster: cacheBuster,
         most_recent_start_date: data?.[0]?.start_date ?? null,
         activities: data ?? [],
       }),
