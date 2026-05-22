@@ -4,6 +4,9 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  "Pragma": "no-cache",
+  "Expires": "0",
 };
 
 Deno.serve(async (req) => {
@@ -55,6 +58,8 @@ Deno.serve(async (req) => {
         success: true,
         period_days: days,
         count: data?.length ?? 0,
+        server_time: new Date().toISOString(),
+        most_recent_start_date: data?.[0]?.start_date ?? null,
         activities: data ?? [],
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
