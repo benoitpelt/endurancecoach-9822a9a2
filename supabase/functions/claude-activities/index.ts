@@ -58,6 +58,8 @@ Deno.serve(async (req) => {
         success: true,
         period_days: days,
         count: data?.length ?? 0,
+        server_time: new Date().toISOString(),
+        most_recent_start_date: data?.[0]?.start_date ?? null,
         activities: data ?? [],
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
