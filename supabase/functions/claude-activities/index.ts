@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
       try {
         const body = await req.json();
         providedKey = body?.key ?? null;
-        daysRaw = body?.days ?? null;
+        daysRaw = body?.days ?? body?.nb_days ?? null;
         userId = body?.user_id ?? null;
         detailsRaw = body?.details ?? null;
       } catch {
@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     }
     // Fallback query string (utile pour GET ou si le body est vide)
     providedKey = providedKey ?? url.searchParams.get("key");
-    daysRaw = daysRaw ?? url.searchParams.get("days");
+    daysRaw = daysRaw ?? url.searchParams.get("days") ?? url.searchParams.get("nb_days");
     userId = userId ?? url.searchParams.get("user_id");
     detailsRaw = detailsRaw ?? url.searchParams.get("details");
 
