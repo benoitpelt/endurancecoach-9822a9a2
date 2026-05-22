@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
   "Pragma": "no-cache",
   "Expires": "0",
@@ -16,9 +16,34 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const providedKey = url.searchParams.get("key");
-    const expectedKey = Deno.env.get("CLAUDE_ACCESS_KEY");
 
+    // Lecture des paramètres : POST (body JSON) prioritaire, sinon query string (GET)
+    let providedKey: string | null = null;
+    let daysRaw: string | number | null = null;
+    let userId: string | null = null;
+    let detailsRaw: string | boolean | null = null;
+
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        providedKey = body?.key ?? null;
+        daysRaw = body?.days ?? null;
+        userId = body?.user_id ?? null;
+        detailsRaw = body?.details ?? null;
+      } catch {
+        return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+    // Fallback query string (utile pour GET ou si le body est vide)
+    providedKey = providedKey ?? url.searchParams.get("key");
+    daysRaw = daysRaw ?? url.searchParams.get("days");
+    userId = userId ?? url.searchParams.get("user_id");
+    detailsRaw = detailsRaw ?? url.searchParams.get("details");
+
+    const expectedKey = Deno.env.get("CLAUDE_ACCESS_KEY");
     if (!expectedKey || providedKey !== expectedKey) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -26,9 +51,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const days = Math.min(parseInt(url.searchParams.get("days") || "90", 10) || 90, 365);
-    const userId = url.searchParams.get("user_id"); // optionnel : filtrer un utilisateur précis
-    const includeDetails = url.searchParams.get("details") !== "false"; // splits/laps inclus par défaut
+    const days = Math.min(parseInt(String(daysRaw ?? "90"), 10) || 90, 365);
+    const includeDetails = detailsRaw === false || detailsRaw === "false" ? false : true;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
