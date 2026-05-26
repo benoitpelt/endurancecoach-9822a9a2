@@ -589,7 +589,7 @@ Réponds UNIQUEMENT avec le JSON, sans markdown ni commentaire.`;
         weakening_points: trajectory.weakening_points || [],
         discipline_breakdown: trajectory.discipline_breakdown || {},
         suggests_plan_review: trajectory.suggests_plan_review || false,
-        trigger_event: "manual_compute",
+        trigger_event: triggerEvent,
         raw_input: {
           analysis_start: analysisStart.toISOString().slice(0, 10),
           plan_start: plan?.start_date,
