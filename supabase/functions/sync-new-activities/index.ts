@@ -440,6 +440,21 @@ Deno.serve(async (req) => {
       vigilanceSignals.push(`${reviewNeeded} activité(s) nécessitant une attention particulière.`);
     }
 
+    // Fire-and-forget: recalculate trajectory after import
+    if (trulyNew.length > 0) {
+      // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+      EdgeRuntime.waitUntil(
+        fetch(`${supabaseUrl}/functions/v1/compute-trajectory`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${serviceKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ user_id: user.id, trigger_event: "auto_after_sync" }),
+        }).catch((e) => console.error("compute-trajectory invoke failed:", e))
+      );
+    }
+
     return new Response(JSON.stringify({
       success: true,
       new_activities: trulyNew.length,
