@@ -632,36 +632,65 @@ export default function PlanPage() {
                         totalMin += wo.duration_target_minutes || 0;
                       });
 
+                      const today = new Date().toISOString().slice(0, 10);
+                      const isCurrent =
+                        !!week.start_date &&
+                        !!week.end_date &&
+                        today >= week.start_date &&
+                        today <= week.end_date;
+
                       return (
-                        <button
-                          key={week.id}
-                          onClick={() => navigate(`/plan/week/${week.id}`)}
-                          className={`w-full text-left bg-card rounded-lg shadow-card p-4 border-l-4 ${WEEK_TYPE_COLORS[week.week_type] || WEEK_TYPE_COLORS.normal} hover:shadow-elevated transition-shadow`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-heading font-semibold text-sm">Semaine {week.week_number}</span>
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                                  {WEEK_TYPE_LABELS[week.week_type] || week.week_type}
-                                </span>
+                        <div key={week.id} className="space-y-2">
+                          <button
+                            onClick={() => navigate(`/plan/week/${week.id}`)}
+                            className={`w-full text-left bg-card rounded-lg shadow-card p-4 border-l-4 ${WEEK_TYPE_COLORS[week.week_type] || WEEK_TYPE_COLORS.normal} hover:shadow-elevated transition-shadow`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-heading font-semibold text-sm">Semaine {week.week_number}</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                    {WEEK_TYPE_LABELS[week.week_type] || week.week_type}
+                                  </span>
+                                  {isCurrent && (
+                                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30">
+                                      En cours
+                                    </span>
+                                  )}
+                                </div>
+                                {(week.start_date || week.end_date) && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatDate(week.start_date)} → {formatDate(week.end_date)}
+                                  </p>
+                                )}
+                                {wWorkouts.length > 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {wWorkouts.length} séance{wWorkouts.length > 1 ? "s" : ""}
+                                    {totalMin > 0 && ` · ${Math.floor(totalMin / 60)}h${String(totalMin % 60).padStart(2, "0")}`}
+                                    {Object.keys(sportCounts).length > 0 && ` · ${Object.entries(sportCounts).map(([s, c]) => `${c} ${SPORT_EMOJI[s] || s}`).join(", ")}`}
+                                  </p>
+                                )}
                               </div>
-                              {(week.start_date || week.end_date) && (
-                                <p className="text-xs text-muted-foreground">
-                                  {formatDate(week.start_date)} → {formatDate(week.end_date)}
-                                </p>
-                              )}
-                              {wWorkouts.length > 0 && (
-                                <p className="text-xs text-muted-foreground">
-                                  {wWorkouts.length} séance{wWorkouts.length > 1 ? "s" : ""}
-                                  {totalMin > 0 && ` · ${Math.floor(totalMin / 60)}h${String(totalMin % 60).padStart(2, "0")}`}
-                                  {Object.keys(sportCounts).length > 0 && ` · ${Object.entries(sportCounts).map(([s, c]) => `${c} ${SPORT_EMOJI[s] || s}`).join(", ")}`}
-                                </p>
-                              )}
+                              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          </div>
-                        </button>
+                          </button>
+                          {isCurrent && (
+                            <div className="flex justify-end">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.dispatchEvent(new CustomEvent("coach-ia:auto-briefing"));
+                                }}
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                                💬 Explique ma semaine
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
