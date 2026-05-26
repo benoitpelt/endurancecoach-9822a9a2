@@ -145,11 +145,84 @@ export default function CoachIAFloating() {
 
   // Auto-trigger the weekly briefing once context is loaded
   useEffect(() => {
-    if (!pendingBriefing || !context || sending || loadingCtx) return;
+    if (!pendingBriefing || !context || sending || loadingCtx || !user) return;
     setPendingBriefing(false);
-    const tsb = context?.load?.tsb;
-    const tsbStr = typeof tsb === "number" ? `${tsb}` : "non disponible";
-    const prompt = `L'utilisateur consulte sa semaine d'entraînement. Génère automatiquement un briefing de cette semaine sans attendre qu'il écrive quoi que ce soit.
+
+    (async () => {
+      const tsb = context?.load?.tsb;
+      const tsbStr = typeof tsb === "number" ? `${tsb}` : "non disponible";
+
+      // Compute Monday→Sunday window for the current week
+      const today = new Date();
+      const dow = (today.getDay() + 6) % 7; // 0 = Monday
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - dow);
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      const todayIso = today.toISOString().slice(0, 10);
+      const mondayIso = monday.toISOString().slice(0, 10);
+      const sundayIso = sunday.toISOString().slice(0, 10);
+
+      const fmtDay = (d: string | Date) =>
+        new Date(d).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "short" });
+
+      // Realised sessions (Strava-matched) for the current week
+      const { data: completed } = await supabase
+        .from("completed_workouts")
+        .select(
+          "sport_type, start_date, duration_seconds, moving_time_seconds, conformity_status, matching_status, activity_name",
+        )
+        .eq("user_id", user.id)
+        .neq("matching_status", "unmatched")
+        .gte("start_date", monday.toISOString())
+        .lte("start_date", sunday.toISOString())
+        .order("start_date", { ascending: true });
+
+      const seances_realisees =
+        completed && completed.length
+          ? completed
+              .map((c: any) => {
+                const sec = c.moving_time_seconds || c.duration_seconds || 0;
+                const min = Math.round(sec / 60);
+                return `- ${fmtDay(c.start_date)} · ${c.sport_type} · ${min} min · conformité: ${c.conformity_status ?? "n/a"}`;
+              })
+              .join("\n")
+          : "Aucune séance réalisée";
+
+      // Planned sessions from today through Sunday
+      const { data: planned } = await supabase
+        .from("planned_workouts")
+        .select(
+          "sport_type, scheduled_date, session_goal, target_summary_label, duration_target_minutes",
+        )
+        .eq("user_id", user.id)
+        .gte("scheduled_date", todayIso)
+        .lte("scheduled_date", sundayIso)
+        .order("scheduled_date", { ascending: true });
+
+      const seances_prevues =
+        planned && planned.length
+          ? planned
+              .map(
+                (p: any) =>
+                  `- ${fmtDay(p.scheduled_date)} · ${p.sport_type} · ${p.session_goal ?? p.target_summary_label ?? "séance"} · ${p.duration_target_minutes ?? "?"} min`,
+              )
+              .join("\n")
+          : "Aucune séance prévue d'ici dimanche";
+
+      const prompt = `L'utilisateur consulte sa semaine d'entraînement (du ${mondayIso} au ${sundayIso}). Génère automatiquement un briefing de cette semaine sans attendre qu'il écrive quoi que ce soit.
+
+RÉALISÉ cette semaine (jours passés) :
+${seances_realisees}
+— Source : activités Strava réelles via completed_workouts
+
+PRÉVU (aujourd'hui et jours restants) :
+${seances_prevues}
+— Source : planned_workouts
+
+Pour les jours passés, base ton analyse uniquement sur ce qui a été réellement fait (RÉALISÉ ci-dessus), pas sur ce qui était prévu. Mentionne si une séance n'a pas été faite ou a été modifiée par rapport au plan (conformity_status). Pour les jours à venir, base-toi sur le plan prévu.
 
 Le briefing doit répondre à ces questions en langage naturel, conversationnel, sans jargon technique :
 1. Quel est l'objectif de cette semaine dans le plan ?
@@ -158,10 +231,12 @@ Le briefing doit répondre à ces questions en langage naturel, conversationnel,
 4. À quoi faire attention compte tenu de l'état de forme actuel (TSB : ${tsbStr}) ?
 5. Un conseil concret pour bien aborder cette semaine.
 
-Ton ton doit être celui d'un coach qui parle à son athlète avant une semaine d'entraînement — direct, encourageant, précis. Maximum 200 mots.`;
-    runMessage(prompt, { hidden: true });
+Ton ton doit être celui d'un coach qui parle à son athlète — direct, encourageant, précis. Maximum 200 mots.`;
+
+      runMessage(prompt, { hidden: true });
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingBriefing, context, sending, loadingCtx]);
+  }, [pendingBriefing, context, sending, loadingCtx, user]);
 
   if (!user || HIDDEN_ROUTES.includes(location.pathname)) return null;
 
