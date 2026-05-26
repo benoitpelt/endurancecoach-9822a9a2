@@ -161,6 +161,8 @@ Le briefing doit répondre à ces questions en langage naturel, conversationnel,
 Ton ton doit être celui d'un coach qui parle à son athlète avant une semaine d'entraînement — direct, encourageant, précis. Maximum 200 mots.`;
     runMessage(prompt, { hidden: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingBriefing, context, sending, loadingCtx]);
+
   if (!user || HIDDEN_ROUTES.includes(location.pathname)) return null;
 
   const newConversation = () => {
