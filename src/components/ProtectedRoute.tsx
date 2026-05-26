@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import HomeButton from "@/components/HomeButton";
+import CoachIAFloating from "@/components/CoachIAFloating";
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -23,6 +24,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
     <>
       {children}
       <HomeButton />
+      <CoachIAFloating />
     </>
   );
 }
