@@ -33,7 +33,18 @@ export default function CoachIAFloating() {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
+  const [pendingBriefing, setPendingBriefing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // External trigger: open drawer + queue weekly briefing
+  useEffect(() => {
+    const handler = () => {
+      setOpen(true);
+      setPendingBriefing(true);
+    };
+    window.addEventListener("coach-ia:auto-briefing", handler as EventListener);
+    return () => window.removeEventListener("coach-ia:auto-briefing", handler as EventListener);
+  }, []);
 
   // Load context + last 20 messages on first open
   useEffect(() => {
