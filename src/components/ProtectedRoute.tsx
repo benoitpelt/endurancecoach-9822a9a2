@@ -24,6 +24,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
     <>
       {children}
       <HomeButton />
+      <CoachIAFloating />
     </>
   );
 }
