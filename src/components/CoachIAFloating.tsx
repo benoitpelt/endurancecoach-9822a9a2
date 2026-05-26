@@ -65,13 +65,23 @@ export default function CoachIAFloating() {
     setInput("");
     setSending(true);
     try {
+      const nowStr = new Date().toLocaleDateString("fr-FR", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
       const { data, error } = await supabase.functions.invoke("coach-ia-chat", {
         body: {
           action: "chat",
           messages: next.filter((m) => m.content !== WELCOME),
           context,
+          now: nowStr,
         },
       });
+
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setMessages([...next, { role: "assistant", content: data.reply ?? "" }]);
