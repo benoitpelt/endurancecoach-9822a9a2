@@ -87,13 +87,12 @@ export default function CoachIAFloating() {
 
   if (!user || HIDDEN_ROUTES.includes(location.pathname)) return null;
 
-  const send = async () => {
-    const text = input.trim();
-    if (!text || sending) return;
+  const runMessage = async (text: string, opts?: { hidden?: boolean }) => {
+    if (!text || sending || !user) return;
+    const hidden = !!opts?.hidden;
     const userMsg: Msg = { role: "user", content: text };
     const next: Msg[] = [...messages, userMsg];
-    setMessages(next);
-    setInput("");
+    if (!hidden) setMessages(next);
     setSending(true);
     try {
       const nowStr = new Date().toLocaleDateString("fr-FR", {
@@ -117,20 +116,52 @@ export default function CoachIAFloating() {
       if (data?.error) throw new Error(data.error);
       const reply = data.reply ?? "";
       const assistantMsg: Msg = { role: "assistant", content: reply };
-      setMessages([...next, assistantMsg]);
+      if (hidden) {
+        // Don't display the hidden user prompt — only the assistant reply
+        setMessages([...messages, assistantMsg]);
+      } else {
+        setMessages([...next, assistantMsg]);
+      }
 
-      // Persist both messages
+      // Persist both messages so the conversation memory stays consistent
       await supabase.from("coach_conversations").insert([
         { user_id: user.id, role: "user", content: text },
         { user_id: user.id, role: "assistant", content: reply },
       ]);
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur du coach IA");
-      setMessages(next);
+      if (!hidden) setMessages(messages);
     } finally {
       setSending(false);
     }
   };
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+    await runMessage(text);
+  };
+
+  // Auto-trigger the weekly briefing once context is loaded
+  useEffect(() => {
+    if (!pendingBriefing || !context || sending || loadingCtx) return;
+    setPendingBriefing(false);
+    const tsb = context?.load?.tsb;
+    const tsbStr = typeof tsb === "number" ? `${tsb}` : "non disponible";
+    const prompt = `L'utilisateur consulte sa semaine d'entraînement. Génère automatiquement un briefing de cette semaine sans attendre qu'il écrive quoi que ce soit.
+
+Le briefing doit répondre à ces questions en langage naturel, conversationnel, sans jargon technique :
+1. Quel est l'objectif de cette semaine dans le plan ?
+2. Pourquoi ces séances dans cet ordre ?
+3. Quelle est la séance la plus importante et pourquoi ?
+4. À quoi faire attention compte tenu de l'état de forme actuel (TSB : ${tsbStr}) ?
+5. Un conseil concret pour bien aborder cette semaine.
+
+Ton ton doit être celui d'un coach qui parle à son athlète avant une semaine d'entraînement — direct, encourageant, précis. Maximum 200 mots.`;
+    runMessage(prompt, { hidden: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingBriefing, context, sending, loadingCtx]);
 
   const newConversation = () => {
     setMessages([{ role: "assistant", content: WELCOME }]);
