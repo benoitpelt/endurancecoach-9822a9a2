@@ -85,7 +85,7 @@ export default function CoachIAFloating() {
     }
   }, [messages, sending]);
 
-  if (!user || HIDDEN_ROUTES.includes(location.pathname)) return null;
+  
 
   const runMessage = async (text: string, opts?: { hidden?: boolean }) => {
     if (!text || sending || !user) return;
