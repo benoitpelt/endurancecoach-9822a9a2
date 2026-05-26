@@ -268,11 +268,31 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
-    const { data: { user }, error: authErr } = await anonClient.auth.getUser(authHeader.replace("Bearer ", ""));
-    if (authErr || !user) return jsonResponse({ error: "Session invalide" }, 401);
-    const userId = user.id;
-    console.log("[compute-trajectory] userId:", userId);
+    // Parse optional body (for service-role internal invocations)
+    let bodyUserId: string | null = null;
+    let bodyTrigger: string | null = null;
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        bodyUserId = body?.user_id ?? null;
+        bodyTrigger = body?.trigger_event ?? null;
+      } catch { /* no body */ }
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    let userId: string | null = null;
+
+    // Internal service-role invocation: trust user_id from body
+    if (bodyUserId && token === supabaseKey) {
+      userId = bodyUserId;
+    } else {
+      const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
+      const { data: { user }, error: authErr } = await anonClient.auth.getUser(token);
+      if (authErr || !user) return jsonResponse({ error: "Session invalide" }, 401);
+      userId = user.id;
+    }
+    const triggerEvent = bodyTrigger || "manual_compute";
+    console.log("[compute-trajectory] userId:", userId, "trigger:", triggerEvent);
 
     // Load goal
     const { data: goal } = await supabase
@@ -569,7 +589,7 @@ Réponds UNIQUEMENT avec le JSON, sans markdown ni commentaire.`;
         weakening_points: trajectory.weakening_points || [],
         discipline_breakdown: trajectory.discipline_breakdown || {},
         suggests_plan_review: trajectory.suggests_plan_review || false,
-        trigger_event: "manual_compute",
+        trigger_event: triggerEvent,
         raw_input: {
           analysis_start: analysisStart.toISOString().slice(0, 10),
           plan_start: plan?.start_date,

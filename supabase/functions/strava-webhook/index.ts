@@ -363,6 +363,22 @@ Deno.serve(async (req) => {
       const accessToken = await getFreshAccessToken(supabase, conn);
       const result = await processActivity(supabase, conn.user_id, accessToken, object_id, aspect_type);
       console.log("Webhook processed", { owner_id, object_id, aspect_type, result });
+
+      // Recalcul auto de la trajectoire après création/maj d'activité
+      if (aspect_type === "create" || aspect_type === "update") {
+        try {
+          await fetch(`${supabaseUrl}/functions/v1/compute-trajectory`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${serviceKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ user_id: conn.user_id, trigger_event: "auto_after_webhook" }),
+          });
+        } catch (e) {
+          console.error("compute-trajectory invoke failed (webhook):", e);
+        }
+      }
     } catch (err) {
       console.error("Webhook processing error", err);
     }
