@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
 
     // ===== Context loading =====
     if (action === "context") {
-      const [planRes, goalRes, actsRes] = await Promise.all([
+      const [planRes, goalRes, actsRes, metricsRes, enrichedRes] = await Promise.all([
         supabase
           .from("training_plans")
           .select(
@@ -109,6 +109,18 @@ Deno.serve(async (req) => {
           .eq("user_id", user.id)
           .order("start_date", { ascending: false })
           .limit(30),
+        supabase
+          .from("athlete_metric_history")
+          .select("metric_type, metric_value, metric_unit, observed_at")
+          .eq("user_id", user.id)
+          .order("observed_at", { ascending: false }),
+        supabase
+          .from("athlete_enriched_profiles")
+          .select(
+            "strongest_discipline, weakest_discipline, injuries_constraints, disliked_sessions, preferred_sessions, max_sessions_per_week, performances",
+          )
+          .eq("user_id", user.id)
+          .maybeSingle(),
       ]);
 
       const activities = (actsRes.data ?? []).map((a) => ({
@@ -119,12 +131,39 @@ Deno.serve(async (req) => {
         activities.map((a) => ({ start_date: a.start_date as string, tss: a.tss })),
       );
 
+      // Latest value per metric_type
+      const latestByType = new Map<string, { value: number; unit: string | null }>();
+      for (const m of metricsRes.data ?? []) {
+        if (!latestByType.has(m.metric_type)) {
+          latestByType.set(m.metric_type, { value: m.metric_value, unit: m.metric_unit });
+        }
+      }
+      const labelMap: Record<string, string> = {
+        ftp: "FTP",
+        hr_max: "FC max",
+        max_heartrate: "FC max",
+        hr_rest: "FC repos",
+        resting_heartrate: "FC repos",
+        vo2max: "VO2max",
+        weight: "Poids",
+        css: "CSS",
+        threshold_pace: "Pace seuil",
+      };
+      const physio = Array.from(latestByType.entries())
+        .map(([type, { value, unit }]) => {
+          const label = labelMap[type] ?? type;
+          return `${label}: ${value}${unit ?? ""}`;
+        })
+        .join(" | ") || "Non renseigné";
+
       return new Response(
         JSON.stringify({
           plan: planRes.data,
           goal: goalRes.data,
           activities,
           load,
+          physio,
+          enriched: enrichedRes.data,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -133,8 +172,14 @@ Deno.serve(async (req) => {
     // ===== Chat =====
     const messages: ChatMessage[] = body.messages ?? [];
     const context = body.context ?? {};
+    const nowStr: string = body.now ?? new Date().toISOString();
 
-    const systemPrompt = `Tu es un coach triathlon expert. Tu reçois le contexte complet de l'athlète : son plan d'entraînement, son objectif de course, sa charge et fatigue actuelles (CTL/ATL/TSB), et ses 30 dernières activités Strava.
+    const enriched = context.enriched ?? null;
+    const profilAthlete = enriched
+      ? `Discipline forte: ${enriched.strongest_discipline ?? "?"} | Discipline faible: ${enriched.weakest_discipline ?? "?"} | Blessures/contraintes: ${enriched.injuries_constraints ?? "aucune"} | Séances préférées: ${enriched.preferred_sessions ?? "?"} | Séances détestées: ${enriched.disliked_sessions ?? "?"} | Max séances/sem: ${enriched.max_sessions_per_week ?? "?"} | Performances: ${JSON.stringify(enriched.performances ?? {})}`
+      : "Non renseigné";
+
+    const systemPrompt = `Tu es un coach triathlon expert. Tu reçois le contexte complet de l'athlète : son plan d'entraînement, son objectif de course, son profil physiologique et athlétique, sa charge et fatigue actuelles (CTL/ATL/TSB), et ses 30 dernières activités Strava.
 
 L'athlète te décrit sa situation du jour (forme, disponibilité, contraintes). Tu dois produire une séance adaptée, structurée exactement ainsi :
 
@@ -155,15 +200,26 @@ L'athlète te décrit sa situation du jour (forme, disponibilité, contraintes).
 
 Ne produis rien d'autre que cette structure. Pas de blabla avant ou après.
 
+Consignes importantes :
+- Utilise le FTP et les zones pour calibrer précisément les intensités. Tiens compte des blessures et contraintes dans le choix du type de séance. Mets en avant la discipline faible quand la fatigue le permet.
+- La date et l'heure actuelles sont indiquées dans [AUJOURD'HUI]. Utilise-les pour distinguer correctement aujourd'hui, hier, et les jours précédents dans les activités Strava.
+
 Contexte athlète :
+
+[AUJOURD'HUI] : ${nowStr}
 
 [PLAN] : ${JSON.stringify(context.plan ?? null)}
 
 [OBJECTIF] : ${JSON.stringify(context.goal ?? null)}
 
+[PROFIL PHYSIO] : ${context.physio ?? "Non renseigné"}
+
+[PROFIL ATHLETE] : ${profilAthlete}
+
 [CHARGE/FATIGUE] : ${JSON.stringify(context.load ?? null)}
 
 [ACTIVITÉS 30J] : ${JSON.stringify(context.activities ?? [])}`;
+
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
