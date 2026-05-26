@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Activity, Calendar, Loader2, Send, X } from "lucide-react";
+import { Activity, Calendar, Loader2, PenSquare, Send, X } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,24 +30,43 @@ export default function CoachIAFloating() {
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: WELCOME },
   ]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Load context + last 20 messages on first open
   useEffect(() => {
-    if (!open || !user || context) return;
-    setLoadingCtx(true);
-    supabase.functions
-      .invoke("coach-ia-chat", { body: { action: "context" } })
-      .then(({ data, error }) => {
-        if (error) {
-          toast.error("Impossible de charger ton contexte.");
-        } else {
-          setContext(data);
-        }
-      })
-      .finally(() => setLoadingCtx(false));
-  }, [open, user, context]);
+    if (!open || !user) return;
+    if (!context) {
+      setLoadingCtx(true);
+      supabase.functions
+        .invoke("coach-ia-chat", { body: { action: "context" } })
+        .then(({ data, error }) => {
+          if (error) toast.error("Impossible de charger ton contexte.");
+          else setContext(data);
+        })
+        .finally(() => setLoadingCtx(false));
+    }
+    if (!historyLoaded) {
+      supabase
+        .from("coach_conversations")
+        .select("role, content, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20)
+        .then(({ data, error }) => {
+          if (!error && data && data.length > 0) {
+            const ordered = data
+              .slice()
+              .reverse()
+              .map((m: any) => ({ role: m.role, content: m.content })) as Msg[];
+            setMessages([{ role: "assistant", content: WELCOME }, ...ordered]);
+          }
+          setHistoryLoaded(true);
+        });
+    }
+  }, [open, user, context, historyLoaded]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -60,7 +79,8 @@ export default function CoachIAFloating() {
   const send = async () => {
     const text = input.trim();
     if (!text || sending) return;
-    const next: Msg[] = [...messages, { role: "user", content: text }];
+    const userMsg: Msg = { role: "user", content: text };
+    const next: Msg[] = [...messages, userMsg];
     setMessages(next);
     setInput("");
     setSending(true);
@@ -84,7 +104,15 @@ export default function CoachIAFloating() {
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      setMessages([...next, { role: "assistant", content: data.reply ?? "" }]);
+      const reply = data.reply ?? "";
+      const assistantMsg: Msg = { role: "assistant", content: reply };
+      setMessages([...next, assistantMsg]);
+
+      // Persist both messages
+      await supabase.from("coach_conversations").insert([
+        { user_id: user.id, role: "user", content: text },
+        { user_id: user.id, role: "assistant", content: reply },
+      ]);
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur du coach IA");
       setMessages(next);
@@ -93,12 +121,16 @@ export default function CoachIAFloating() {
     }
   };
 
+  const newConversation = () => {
+    setMessages([{ role: "assistant", content: WELCOME }]);
+    setInput("");
+  };
+
   const saveToPlan = async (idx: number, content: string) => {
     if (!user) return;
     setSavingIdx(idx);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      // Find active plan + the week containing today
       const { data: plan } = await supabase
         .from("training_plans")
         .select("id, training_blocks(id, training_weeks(id, start_date, end_date))")
@@ -124,7 +156,6 @@ export default function CoachIAFloating() {
         return;
       }
 
-      // Detect sport from header line
       const header = content.split("\n").find((l) => l.includes("SÉANCE")) ?? "";
       const lower = header.toLowerCase();
       const sport = lower.includes("nat") || lower.includes("swim")
@@ -176,14 +207,25 @@ export default function CoachIAFloating() {
                 {loadingCtx ? "Chargement du contexte…" : "Prêt à t'accompagner"}
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setOpen(false)}
-              aria-label="Fermer"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={newConversation}
+                aria-label="Nouvelle conversation"
+                title="Nouvelle conversation"
+              >
+                <PenSquare className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setOpen(false)}
+                aria-label="Fermer"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <ScrollArea className="flex-1">
