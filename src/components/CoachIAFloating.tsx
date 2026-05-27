@@ -366,13 +366,17 @@ Ton ton doit être celui d'un coach qui parle à son athlète — direct, encour
                 >
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap",
+                      "max-w-[85%] rounded-2xl px-3 py-2 text-sm",
                       m.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground",
+                        ? "bg-primary text-primary-foreground whitespace-pre-wrap"
+                        : "bg-secondary text-secondary-foreground prose prose-sm max-w-none",
                     )}
                   >
-                    {m.content}
+                    {m.role === "user" ? (
+                      m.content
+                    ) : (
+                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                    )}
                   </div>
                   {m.role === "assistant" && i > 0 && (
                     <Button
