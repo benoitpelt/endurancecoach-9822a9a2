@@ -30,10 +30,6 @@ Deno.serve(async (req) => {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
 
   const clientId = Deno.env.get("STRAVA_CLIENT_ID");
   const clientSecret = Deno.env.get("STRAVA_CLIENT_SECRET");
