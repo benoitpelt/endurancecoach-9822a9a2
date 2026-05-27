@@ -196,7 +196,7 @@ export default function CoachIAFloating() {
       const { data: planned } = await supabase
         .from("planned_workouts")
         .select(
-          "sport_type, scheduled_date, session_goal, target_summary_label, duration_target_minutes",
+          "sport_type, scheduled_date, session_goal, intensity_zone_label, duration_target_minutes",
         )
         .eq("user_id", user.id)
         .gte("scheduled_date", todayIso)
