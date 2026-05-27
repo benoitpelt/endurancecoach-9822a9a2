@@ -2,12 +2,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-admin-key, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
   "Pragma": "no-cache",
   "Expires": "0",
 };
+
+function extractAdminKey(req: Request): string | null {
+  const h = req.headers.get("x-admin-key");
+  if (h) return h;
+  const auth = req.headers.get("authorization");
+  if (auth && auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+  return null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
