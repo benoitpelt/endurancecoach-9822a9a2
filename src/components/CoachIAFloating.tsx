@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Activity, Calendar, Loader2, PenSquare, Send, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -195,7 +196,7 @@ export default function CoachIAFloating() {
       const { data: planned } = await supabase
         .from("planned_workouts")
         .select(
-          "sport_type, scheduled_date, session_goal, target_summary_label, duration_target_minutes",
+          "sport_type, scheduled_date, session_goal, intensity_zone_label, duration_target_minutes",
         )
         .eq("user_id", user.id)
         .gte("scheduled_date", todayIso)
@@ -207,7 +208,7 @@ export default function CoachIAFloating() {
           ? planned
               .map(
                 (p: any) =>
-                  `- ${fmtDay(p.scheduled_date)} · ${p.sport_type} · ${p.session_goal ?? p.target_summary_label ?? "séance"} · ${p.duration_target_minutes ?? "?"} min`,
+                  `- ${fmtDay(p.scheduled_date)} · ${p.sport_type} · ${p.session_goal ?? p.intensity_zone_label ?? "séance"} · ${p.duration_target_minutes ?? "?"} min`,
               )
               .join("\n")
           : "Aucune séance prévue d'ici dimanche";
@@ -365,13 +366,17 @@ Ton ton doit être celui d'un coach qui parle à son athlète — direct, encour
                 >
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap",
+                      "max-w-[85%] rounded-2xl px-3 py-2 text-sm",
                       m.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground",
+                        ? "bg-primary text-primary-foreground whitespace-pre-wrap"
+                        : "bg-secondary text-secondary-foreground prose prose-sm max-w-none",
                     )}
                   >
-                    {m.content}
+                    {m.role === "user" ? (
+                      m.content
+                    ) : (
+                      <ReactMarkdown>{m.content}</ReactMarkdown>
+                    )}
                   </div>
                   {m.role === "assistant" && i > 0 && (
                     <Button
