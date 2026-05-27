@@ -8,16 +8,24 @@
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Headers": "authorization, x-admin-key, content-type",
 };
+
+function extractAdminKey(req: Request): string | null {
+  const h = req.headers.get("x-admin-key");
+  if (h) return h;
+  const auth = req.headers.get("authorization");
+  if (auth && auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+  return null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const url = new URL(req.url);
-  const key = url.searchParams.get("key");
   const accessKey = Deno.env.get("CLAUDE_ACCESS_KEY");
-  if (!accessKey || key !== accessKey) {
+  const provided = extractAdminKey(req);
+  if (!accessKey || !provided || provided !== accessKey) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

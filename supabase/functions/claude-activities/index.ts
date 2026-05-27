@@ -2,12 +2,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.100.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-admin-key, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
   "Pragma": "no-cache",
   "Expires": "0",
 };
+
+function extractAdminKey(req: Request): string | null {
+  const h = req.headers.get("x-admin-key");
+  if (h) return h;
+  const auth = req.headers.get("authorization");
+  if (auth && auth.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+  return null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -26,7 +34,6 @@ Deno.serve(async (req) => {
     if (req.method === "POST") {
       try {
         const body = await req.json();
-        providedKey = body?.key ?? null;
         daysRaw = body?.days ?? body?.nb_days ?? null;
         userId = body?.user_id ?? null;
         detailsRaw = body?.details ?? null;
@@ -37,14 +44,17 @@ Deno.serve(async (req) => {
         });
       }
     }
-    // Fallback query string (utile pour GET ou si le body est vide)
-    providedKey = providedKey ?? url.searchParams.get("key");
+    // Fallback query string for non-secret params only
     daysRaw = daysRaw ?? url.searchParams.get("days") ?? url.searchParams.get("nb_days");
     userId = userId ?? url.searchParams.get("user_id");
     detailsRaw = detailsRaw ?? url.searchParams.get("details");
 
+    // Admin key MUST come from a header (X-Admin-Key or Authorization: Bearer ...).
+    // Query-string keys leak into server/proxy/browser logs.
+    providedKey = extractAdminKey(req);
+
     const expectedKey = Deno.env.get("CLAUDE_ACCESS_KEY");
-    if (!expectedKey || providedKey !== expectedKey) {
+    if (!expectedKey || !providedKey || providedKey !== expectedKey) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
