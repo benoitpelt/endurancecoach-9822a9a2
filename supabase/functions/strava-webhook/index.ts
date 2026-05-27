@@ -88,8 +88,25 @@ async function processActivity(
   stravaActivityId: number,
   aspectType: string,
 ) {
-  // Deletes
+  // Deletes — verify with Strava API that the activity is truly gone before
+  // touching local records. This prevents a forged "delete" event (the webhook
+  // POST endpoint must remain public for Strava, so payloads aren't authenticated)
+  // from wiping a user's data.
   if (aspectType === "delete") {
+    const verify = await fetch(
+      `https://www.strava.com/api/v3/activities/${stravaActivityId}?include_all_efforts=false`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    // Strava returns 404 (and sometimes 401) when the activity has actually been deleted.
+    // Any 2xx response means the activity still exists → reject the delete event as forged.
+    if (verify.ok) {
+      console.warn("Ignored forged delete: activity still exists on Strava", stravaActivityId);
+      return { ignored: "forged_delete" };
+    }
+    if (verify.status !== 404 && verify.status !== 410 && verify.status !== 401) {
+      console.warn("Skipping delete: unexpected Strava status", verify.status, stravaActivityId);
+      return { ignored: "delete_verification_failed" };
+    }
     const { data: existing } = await supabase
       .from("imported_activities")
       .select("id")
