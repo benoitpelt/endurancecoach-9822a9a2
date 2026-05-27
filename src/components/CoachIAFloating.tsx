@@ -208,7 +208,7 @@ export default function CoachIAFloating() {
           ? planned
               .map(
                 (p: any) =>
-                  `- ${fmtDay(p.scheduled_date)} · ${p.sport_type} · ${p.session_goal ?? p.target_summary_label ?? "séance"} · ${p.duration_target_minutes ?? "?"} min`,
+                  `- ${fmtDay(p.scheduled_date)} · ${p.sport_type} · ${p.session_goal ?? p.intensity_zone_label ?? "séance"} · ${p.duration_target_minutes ?? "?"} min`,
               )
               .join("\n")
           : "Aucune séance prévue d'ici dimanche";
