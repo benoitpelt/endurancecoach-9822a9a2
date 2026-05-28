@@ -74,7 +74,17 @@ Deno.serve(async (req) => {
       .eq("completed_workout_id", completed_workout_id)
       .maybeSingle();
 
-    // Build analysis using AI
+    // Load detailed activity data (laps, splits) if available
+    let activityDetails: any = null;
+    if (cw.imported_activity_id) {
+      const { data: ia } = await supabase
+        .from("imported_activities")
+        .select("laps, splits_metric, max_power, max_speed")
+        .eq("id", cw.imported_activity_id)
+        .maybeSingle();
+      activityDetails = ia;
+    }
+
     const sportLabels: Record<string, string> = { swim: "natation", bike: "vélo", run: "course à pied" };
     const sportLabel = sportLabels[cw.sport_type] || cw.sport_type;
 
