@@ -203,12 +203,56 @@ Deno.serve(async (req) => {
   }
 });
 
-function buildAnalysisPrompt(cw: any, planned: any, feedback: any, sportLabel: string, actualSummary: string, plannedSummary: string): string {
+function fmtPace(secPerKm: number): string {
+  const m = Math.floor(secPerKm / 60);
+  const s = Math.round(secPerKm % 60);
+  return `${m}:${String(s).padStart(2, "0")}/km`;
+}
+
+function summarizeLaps(laps: any[], sportType: string): string {
+  if (!Array.isArray(laps) || laps.length === 0) return "";
+  const isRun = sportType === "run";
+  const isBike = sportType === "bike";
+  const rows = laps.slice(0, 30).map((l: any, i: number) => {
+    const dist = l.distance ? (Number(l.distance) / 1000).toFixed(2) + " km" : "—";
+    const dur = l.moving_time || l.elapsed_time;
+    const durStr = dur ? `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, "0")}` : "—";
+    const hr = l.average_heartrate ? ` FC ${Math.round(l.average_heartrate)}` : "";
+    const pwr = isBike && l.average_watts ? ` ${Math.round(l.average_watts)}W` : "";
+    let pace = "";
+    if (isRun && l.distance > 0 && dur) pace = ` ${fmtPace(dur / (l.distance / 1000))}`;
+    else if (isBike && l.average_speed) pace = ` ${(l.average_speed * 3.6).toFixed(1)} km/h`;
+    return `  Lap ${i + 1}: ${dist} en ${durStr}${pace}${hr}${pwr}`;
+  });
+  return rows.join("\n");
+}
+
+function summarizeSplits(splits: any[], sportType: string): string {
+  if (!Array.isArray(splits) || splits.length === 0) return "";
+  const isRun = sportType === "run";
+  const rows = splits.slice(0, 30).map((s: any) => {
+    const km = s.split;
+    const dur = s.moving_time || s.elapsed_time;
+    const durStr = dur ? `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, "0")}` : "—";
+    const hr = s.average_heartrate ? ` FC ${Math.round(s.average_heartrate)}` : "";
+    const elev = s.elevation_difference ? ` D${s.elevation_difference > 0 ? "+" : ""}${Math.round(s.elevation_difference)}m` : "";
+    let pace = "";
+    if (isRun && s.distance > 0 && dur) pace = ` (${fmtPace(dur / (s.distance / 1000))})`;
+    return `  Km ${km}: ${durStr}${pace}${hr}${elev}`;
+  });
+  return rows.join("\n");
+}
+
+function buildAnalysisPrompt(cw: any, planned: any, feedback: any, sportLabel: string, actualSummary: string, plannedSummary: string, activityDetails: any): string {
   let prompt = `Analyse cette séance d'entraînement de ${sportLabel}.
 
 ## Réalisé
 ${actualSummary}
 ${cw.activity_name ? `Nom: ${cw.activity_name}` : ""}
+${cw.max_heartrate ? `FC max: ${Math.round(Number(cw.max_heartrate))} bpm` : ""}
+${cw.avg_power ? `Puissance moy: ${Math.round(Number(cw.avg_power))} W` : ""}
+${activityDetails?.max_power ? `Puissance max: ${Math.round(Number(activityDetails.max_power))} W` : ""}
+${cw.calories ? `Calories: ${Math.round(Number(cw.calories))} kcal` : ""}
 
 ## Prévu
 ${plannedSummary}
@@ -218,6 +262,16 @@ ${plannedSummary}
     if (planned.structure_text) prompt += `\nStructure prévue: ${planned.structure_text}`;
     if (planned.coach_note_short) prompt += `\nNote coach: ${planned.coach_note_short}`;
     if (planned.workout_priority) prompt += `\nPriorité: ${planned.workout_priority}`;
+  }
+
+  // Detailed lap/split data — the key source for granular analysis
+  const lapSummary = summarizeLaps(activityDetails?.laps, cw.sport_type);
+  const splitSummary = summarizeSplits(activityDetails?.splits_metric, cw.sport_type);
+  if (lapSummary) {
+    prompt += `\n\n## Détail des intervalles (laps Strava — ${activityDetails.laps.length} au total)\n${lapSummary}`;
+  }
+  if (splitSummary && cw.sport_type === "run") {
+    prompt += `\n\n## Splits kilométriques\n${splitSummary}`;
   }
 
   if (feedback) {
@@ -232,23 +286,24 @@ ${plannedSummary}
 ## Consignes
 Réponds en JSON avec cette structure exacte:
 {
-  "comparison": "Texte comparant le prévu et le réalisé (2-4 phrases). Factuel.",
-  "interpretation": "Interprétation prudente de ce que cela signifie pour l'entraînement (2-3 phrases). Bienveillante.",
+  "comparison": "Texte comparant le prévu et le réalisé (2-4 phrases). Factuel, appuie-toi sur les laps/splits si disponibles.",
+  "interpretation": "Interprétation détaillée (3-5 phrases) : qualité de l'exécution, gestion de l'effort (dérive cardiaque, régularité des splits, écarts entre intervalles), points forts et faibles observés dans les laps. Bienveillante mais concrète.",
   "conformity_status": "conform|partial|non_conform|free_workout",
   "vigilance_signals": ["signal 1 si pertinent"],
   "requires_adjustment_review": false
 }
 
 Règles:
-- Distingue les faits observés de l'interprétation
-- Reste prudent si les données sont incomplètes
-- Évite les conclusions fortes sur un seul signal
-- Une séance peut être partiellement conforme mais utile
-- Une séance libre peut être utile, neutre ou perturbatrice
-- Ne recommande un requires_adjustment_review que si l'écart est vraiment significatif`;
+- EXPLOITE les laps et splits quand ils sont fournis : régularité, dérive FC, écarts de puissance/allure entre intervalles, qualité de la récupération entre efforts.
+- Formats humains : durées en min:sec ou h/min, allures min:sec/km, vitesses km/h, puissance W, FC bpm.
+- Distingue les faits observés de l'interprétation.
+- Reste prudent uniquement si les données sont vraiment incomplètes — quand laps/splits sont là, sois concret.
+- Une séance peut être partiellement conforme mais utile.
+- Ne recommande un requires_adjustment_review que si l'écart est vraiment significatif.`;
 
   return prompt;
 }
+
 
 function buildFallbackComparison(cw: any, planned: any, sportLabel: string): string {
   if (!planned) {
