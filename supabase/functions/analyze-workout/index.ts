@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
 
     if (lovableApiKey) {
       try {
-        const prompt = buildAnalysisPrompt(cw, planned, feedback, sportLabel, actualSummary, plannedSummary);
+        const prompt = buildAnalysisPrompt(cw, planned, feedback, sportLabel, actualSummary, plannedSummary, activityDetails);
         
         const aiRes = await fetch("https://ai-gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
