@@ -81,10 +81,15 @@ export default function CoachIAFloating() {
   }, [open, user, context, historyLoaded]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, sending]);
+    const el = scrollRef.current;
+    if (!el) return;
+    // The Radix ScrollArea viewport is the actual scrollable container
+    const viewport = el.closest('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+    const target = viewport ?? el;
+    requestAnimationFrame(() => {
+      target.scrollTop = target.scrollHeight;
+    });
+  }, [messages, sending, open]);
 
   
 
